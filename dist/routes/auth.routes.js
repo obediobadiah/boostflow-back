@@ -125,7 +125,7 @@ router.get('/google/callback', passport_1.default.authenticate('google', { sessi
     const token = generateToken(user);
     // Log the redirect and token information
     console.log('Google authentication successful, redirecting to frontend with token');
-    // Use a hardcoded URL with port 3000 
+    // Use a hardcoded URL with port 3000
     const redirectUrl = `http://localhost:3000/auth/callback?token=${token}`;
     console.log('Redirecting to:', redirectUrl);
     // Redirect to frontend with token

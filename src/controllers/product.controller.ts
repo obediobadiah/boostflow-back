@@ -119,6 +119,24 @@ export const getAllProducts = async (req: Request, res: Response) => {
   }
 };
 
+// // Get all products
+// export const getAllProductsCount = async (req: Request, res: Response) => {
+//   try {
+//     // Build sort
+    
+//     const products = await Product.count();
+    
+//     res.status(200).json({
+//       products
+//     });
+//   } catch (error: any) {
+//     res.status(500).json({
+//       message: 'Error counting products',
+//       error: error.message
+//     });
+//   }
+// };
+
 // Get product by ID
 export const getProductById = async (req: Request, res: Response) => {
   try {
