@@ -516,12 +516,12 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
     // Get weekly view counts with product filtering
     const weeklyStats = await ProductView.findAll({
       attributes: [
-        [fn('date_trunc', 'week', col('timestamp')), 'week'],
-        [fn('count', col('id')), 'views'],
-        [fn('count', literal('DISTINCT "productId"')), 'uniqueProducts']
+        [fn('date_trunc', 'week', col('ProductView.timestamp')), 'week'],
+        [fn('count', col('ProductView.id')), 'views'],
+        [fn('count', literal('DISTINCT "ProductView"."productId"')), 'uniqueProducts']
       ],
       where: {
-        timestamp: {
+        '$ProductView.timestamp$': {
           [Op.between]: [startDate, endDate]
         }
       },
@@ -533,14 +533,14 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
           attributes: []  // No need to select product fields
         }
       ],
-      group: [fn('date_trunc', 'week', col('timestamp'))],
-      order: [[fn('date_trunc', 'week', col('timestamp')), 'ASC']]
+      group: [fn('date_trunc', 'week', col('ProductView.timestamp'))],
+      order: [[fn('date_trunc', 'week', col('ProductView.timestamp')), 'ASC']]
     });
     
     // Calculate total views for current month with filtering
     const totalMonthViews = await ProductView.count({
       where: {
-        timestamp: {
+        '$ProductView.timestamp$': {
           [Op.between]: [startDate, endDate]
         }
       },
@@ -560,7 +560,7 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
     
     const prevMonthViews = await ProductView.count({
       where: {
-        timestamp: {
+        '$ProductView.timestamp$': {
           [Op.between]: [prevStartDate, prevEndDate]
         }
       },
@@ -587,8 +587,8 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
     // Get weekly product creation counts with filtering
     const weeklyProductCreation = await Product.findAll({
       attributes: [
-        [fn('date_trunc', 'week', col('createdAt')), 'week'],
-        [fn('count', col('id')), 'count']
+        [fn('date_trunc', 'week', col('Product.createdAt')), 'week'],
+        [fn('count', col('Product.id')), 'count']
       ],
       where: {
         createdAt: {
@@ -596,8 +596,8 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
         },
         ...productWhereCondition
       },
-      group: [fn('date_trunc', 'week', col('createdAt'))],
-      order: [[fn('date_trunc', 'week', col('createdAt')), 'ASC']]
+      group: [fn('date_trunc', 'week', col('Product.createdAt'))],
+      order: [[fn('date_trunc', 'week', col('Product.createdAt')), 'ASC']]
     });
     
     // Calculate total new products for current month with filtering
@@ -1024,13 +1024,13 @@ export const getPromotionStatsForMonth = async (req: Request, res: Response) => 
     // Get weekly promotion stats
     const weeklyStats = await PromotionClick.findAll({
       attributes: [
-        [fn('date_trunc', 'week', col('timestamp')), 'week'],
-        [fn('count', col('id')), 'clicks'],
-        [fn('sum', literal('CASE WHEN "isConversion" = true THEN 1 ELSE 0 END')), 'conversions'],
-        [fn('sum', col('earnings')), 'earnings']
+        [fn('date_trunc', 'week', col('PromotionClick.timestamp')), 'week'],
+        [fn('count', col('PromotionClick.id')), 'clicks'],
+        [fn('sum', literal('CASE WHEN "PromotionClick"."isConversion" = true THEN 1 ELSE 0 END')), 'conversions'],
+        [fn('sum', col('PromotionClick.earnings')), 'earnings']
       ],
       where: {
-        timestamp: {
+        '$PromotionClick.timestamp$': {
           [Op.between]: [startDate, endDate]
         }
       },
@@ -1042,8 +1042,8 @@ export const getPromotionStatsForMonth = async (req: Request, res: Response) => 
           attributes: []
         }
       ],
-      group: [fn('date_trunc', 'week', col('timestamp'))],
-      order: [[fn('date_trunc', 'week', col('timestamp')), 'ASC']]
+      group: [fn('date_trunc', 'week', col('PromotionClick.timestamp'))],
+      order: [[fn('date_trunc', 'week', col('PromotionClick.timestamp')), 'ASC']]
     });
     
     // Calculate total stats for current month
