@@ -537,22 +537,6 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
       order: [[fn('date_trunc', 'week', col('timestamp')), 'ASC']]
     });
     
-    // Get weekly product creation counts with filtering
-    const weeklyProductCreation = await Product.findAll({
-      attributes: [
-        [fn('date_trunc', 'week', col('createdAt')), 'week'],
-        [fn('count', col('id')), 'count']
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [startDate, endDate]
-        },
-        ...productWhereCondition
-      },
-      group: [fn('date_trunc', 'week', col('createdAt'))],
-      order: [[fn('date_trunc', 'week', col('createdAt')), 'ASC']]
-    });
-    
     // Calculate total views for current month with filtering
     const totalMonthViews = await ProductView.count({
       where: {
@@ -568,16 +552,6 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
           attributes: []
         }
       ]
-    });
-    
-    // Calculate total new products for current month with filtering
-    const totalNewProducts = await Product.count({
-      where: {
-        createdAt: {
-          [Op.between]: [startDate, endDate]
-        },
-        ...productWhereCondition
-      }
     });
     
     // Calculate previous month stats for comparison with filtering
@@ -600,10 +574,37 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
       ]
     });
     
+    // Calculate previous month product creation count
     const prevMonthProducts = await Product.count({
       where: {
         createdAt: {
           [Op.between]: [prevStartDate, prevEndDate]
+        },
+        ...productWhereCondition
+      }
+    });
+    
+    // Get weekly product creation counts with filtering
+    const weeklyProductCreation = await Product.findAll({
+      attributes: [
+        [fn('date_trunc', 'week', col('createdAt')), 'week'],
+        [fn('count', col('id')), 'count']
+      ],
+      where: {
+        createdAt: {
+          [Op.between]: [startDate, endDate]
+        },
+        ...productWhereCondition
+      },
+      group: [fn('date_trunc', 'week', col('createdAt'))],
+      order: [[fn('date_trunc', 'week', col('createdAt')), 'ASC']]
+    });
+    
+    // Calculate total new products for current month with filtering
+    const totalNewProducts = await Product.count({
+      where: {
+        createdAt: {
+          [Op.between]: [startDate, endDate]
         },
         ...productWhereCondition
       }
@@ -1146,7 +1147,7 @@ export const getPromotionStatsForMonth = async (req: Request, res: Response) => 
       if (weekNumber > 0 && weekNumber <= numWeeksInMonth) {
         const clicks = parseInt(stat.get('clicks') as string) || 0;
         const conversions = parseInt(stat.get('conversions') as string) || 0;
-        const earnings = parseFloat(stat.get('earnings') as string) || 0;
+        const earnings = (stat.get('earnings') as unknown as number) || 0;
         
         weekDataMap.set(weekNumber, {
           name: `Week ${weekNumber}`,
