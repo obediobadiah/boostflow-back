@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testConnection = void 0;
+exports.initializeDatabase = exports.testConnection = void 0;
 const sequelize_1 = require("sequelize");
 const dotenv_1 = __importDefault(require("dotenv"));
 // Load environment variables
@@ -40,4 +40,21 @@ const testConnection = async () => {
     }
 };
 exports.testConnection = testConnection;
+// Initialize the database connection
+const initializeDatabase = async () => {
+    try {
+        await sequelize.authenticate();
+        // Database connection has been established successfully
+        // Sync models with database
+        if (process.env.NODE_ENV !== 'production') {
+            await sequelize.sync({ alter: false }); // Set alter to false to avoid constraint issues
+        }
+    }
+    catch (error) {
+        console.error('Unable to connect to the database:', error);
+        throw error;
+    }
+};
+exports.initializeDatabase = initializeDatabase;
+// Export the sequelize instance directly
 exports.default = sequelize;

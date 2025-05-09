@@ -88,273 +88,51 @@ router.get('/:id', async (req, res, next) => {
     }
 });
 // Create a new product
-router.post('/', authenticate, canCreateProducts, validateProduct, async (req, res, next) => {
+router.post('/', authenticate, [
+    (0, express_validator_1.body)('name').notEmpty().withMessage('Product name is required'),
+    (0, express_validator_1.body)('price').isNumeric().withMessage('Price must be a number'),
+    (0, express_validator_1.body)('category').notEmpty().withMessage('Category is required'),
+    (0, express_validator_1.body)('commissionRate').isNumeric().withMessage('Commission rate must be a number'),
+    (0, express_validator_1.body)('commissionType').isIn(['percentage', 'fixed']).withMessage('Commission type must be either percentage or fixed')
+], async (req, res) => {
     try {
-        console.log('Product creation request received:', {
-            body: req.body ? Object.keys(req.body) : 'No body',
-            auth: req.user ? 'Authenticated' : 'Not Authenticated',
-            userId: req.user ? req.user.id : 'No ID',
-            contentType: req.headers && req.headers['content-type']
-        });
         // Check for validation errors
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            console.log('Validation errors:', errors.array());
             return res.status(400).json({ errors: errors.array() });
         }
-        if (!req.user) {
-            console.log('Auth failed - no user in request');
+        if (!req.user?.id) {
             return res.status(401).json({ message: 'Authentication required' });
         }
-        const user = req.user;
-        const { name, description, price, category, commissionRate, commissionType = 'percentage', images = [], affiliateLink, sourcePlatform } = req.body;
-        try {
-            // Ensure price and commissionRate are valid numbers
-            let parsedPrice;
-            let parsedCommissionRate;
-            try {
-                parsedPrice = typeof price === 'number' ? price : parseFloat(price);
-                if (isNaN(parsedPrice)) {
-                    return res.status(400).json({ message: 'Price must be a valid number' });
-                }
-                // Format to respect DECIMAL(10, 2) in the database
-                // This restricts to 10 total digits, with 2 decimal places
-                if (parsedPrice.toString().replace('.', '').length > 10) {
-                    return res.status(400).json({
-                        message: 'Price is too large',
-                        error: 'Price exceeds the maximum allowed digits (10 digits total, with 2 decimal places)'
-                    });
-                }
-                // Properly format for database by limiting to 2 decimal places
-                parsedPrice = parseFloat(parsedPrice.toFixed(2));
-            }
-            catch (error) {
-                return res.status(400).json({ message: 'Price is in invalid format' });
-            }
-            try {
-                parsedCommissionRate = typeof commissionRate === 'number' ? commissionRate : parseFloat(commissionRate);
-                if (isNaN(parsedCommissionRate)) {
-                    return res.status(400).json({ message: 'Commission rate must be a valid number' });
-                }
-                // Format to respect DECIMAL(10, 2) in the database
-                // This restricts to 10 total digits, with 2 decimal places
-                if (parsedCommissionRate.toString().replace('.', '').length > 10) {
-                    return res.status(400).json({
-                        message: 'Commission rate is too large',
-                        error: 'Commission rate exceeds the maximum allowed digits (10 digits total, with 2 decimal places)'
-                    });
-                }
-                // Properly format for database by limiting to 2 decimal places
-                parsedCommissionRate = parseFloat(parsedCommissionRate.toFixed(2));
-            }
-            catch (error) {
-                return res.status(400).json({ message: 'Commission rate is in invalid format' });
-            }
-            // Process images - ensure it's an array and validate
-            let processedImages = [];
-            // If images is a string (by mistake), try to parse it
-            if (typeof images === 'string') {
-                try {
-                    const parsed = JSON.parse(images);
-                    processedImages = Array.isArray(parsed) ? parsed : [images];
-                }
-                catch {
-                    // If parsing fails, treat as a single image URL
-                    processedImages = [images];
-                }
-            }
-            // If images is already an array, use it
-            else if (Array.isArray(images)) {
-                processedImages = images;
-            }
-            console.log('Creating product with data:', {
-                name,
-                description: description ? `${description.substring(0, 30)}...` : 'missing',
-                price: parsedPrice,
-                ownerId: user.id,
-                category,
-                commissionRate: parsedCommissionRate,
-                commissionType,
-                imagesCount: processedImages.length
-            });
-            // Create the product with validated data
-            try {
-                const product = await models_1.Product.create({
-                    name,
-                    description,
-                    price: parsedPrice,
-                    images: processedImages,
-                    ownerId: user.id,
-                    category,
-                    commissionRate: parsedCommissionRate,
-                    commissionType,
-                    affiliateLink,
-                    sourcePlatform,
-                    active: true,
-                });
-                console.log('Product created successfully:', {
-                    id: product.id,
-                    name: product.name
-                });
-                return res.status(201).json({
-                    message: 'Product created successfully',
-                    product
-                });
-            }
-            catch (dbError) {
-                console.error('Database error creating product:', dbError);
-                // Add explicit log of the data being sent to database
-                console.error('Failed product data:', {
-                    name,
-                    price: parsedPrice,
-                    type: typeof parsedPrice,
-                    commissionRate: parsedCommissionRate,
-                    type2: typeof parsedCommissionRate,
-                    imagesType: typeof processedImages,
-                    isImagesArray: Array.isArray(processedImages),
-                    commissionType
-                });
-                // Check for specific database errors
-                if (dbError.name === 'SequelizeValidationError') {
-                    console.log('Validation errors:', dbError.errors);
-                    // Map the errors to more user-friendly messages
-                    const errors = dbError.errors.map((e) => {
-                        let message = e.message;
-                        // Handle specific validation types
-                        if (e.validatorKey === 'len') {
-                            // Length validation
-                            if (e.path === 'name') {
-                                const [min, max] = e.validatorArgs;
-                                message = `Product name must be between ${min} and ${max} characters`;
-                            }
-                        }
-                        else if (e.validatorKey === 'min') {
-                            // Minimum value validation
-                            if (e.path === 'price' || e.path === 'commissionRate') {
-                                message = `${e.path.charAt(0).toUpperCase() + e.path.slice(1)} must be greater than or equal to ${e.validatorArgs[0]}`;
-                            }
-                        }
-                        else if (e.validatorKey === 'notEmpty') {
-                            // Not empty validation
-                            message = `${e.path.charAt(0).toUpperCase() + e.path.slice(1)} cannot be empty`;
-                        }
-                        else if (e.validatorKey === 'isIn') {
-                            // Enum validation
-                            if (e.path === 'commissionType') {
-                                message = `Commission type must be one of: ${e.validatorArgs[0].join(', ')}`;
-                            }
-                        }
-                        else if (e.validatorKey === 'not_null') {
-                            // Not null validation
-                            message = `${e.path.charAt(0).toUpperCase() + e.path.slice(1)} is required`;
-                        }
-                        else if (e.validatorKey === 'isEmail') {
-                            // Email validation
-                            message = `Please enter a valid email address`;
-                        }
-                        else if (e.validatorKey === 'isUrl') {
-                            // URL validation
-                            message = `Please enter a valid URL`;
-                        }
-                        else if (e.validatorKey === 'isNumeric') {
-                            // Numeric validation
-                            message = `${e.path.charAt(0).toUpperCase() + e.path.slice(1)} must be a number`;
-                        }
-                        else if (e.validatorKey === 'isDecimal') {
-                            // Decimal validation
-                            message = `${e.path.charAt(0).toUpperCase() + e.path.slice(1)} must be a decimal number`;
-                        }
-                        else if (e.validatorKey === 'max') {
-                            // Maximum value validation
-                            message = `${e.path.charAt(0).toUpperCase() + e.path.slice(1)} must be less than or equal to ${e.validatorArgs[0]}`;
-                        }
-                        return {
-                            field: e.path,
-                            message: message,
-                            type: e.validatorKey
-                        };
-                    });
-                    return res.status(400).json({
-                        message: 'Validation error',
-                        errors: errors
-                    });
-                }
-                else if (dbError.name === 'SequelizeDatabaseError') {
-                    // Database-level errors
-                    console.error('Database error details:', {
-                        message: dbError.message,
-                        sql: dbError.sql,
-                        parameters: dbError.parameters,
-                        parent: dbError.parent,
-                        original: dbError.original
-                    });
-                    // Check for specific database error types
-                    if (dbError.message.includes('invalid input syntax') || dbError.message.includes('numeric field overflow')) {
-                        // Numeric format errors
-                        return res.status(400).json({
-                            message: 'Invalid numeric format',
-                            error: 'One or more fields have invalid numeric values. Please check price and commission rate for valid numbers.'
-                        });
-                    }
-                    else if (dbError.message.includes('value too long') || dbError.message.includes('out of range')) {
-                        // Length or range errors
-                        return res.status(400).json({
-                            message: 'Data size error',
-                            error: 'One or more fields exceed the maximum allowed size or range.'
-                        });
-                    }
-                    else if (dbError.message.includes('array')) {
-                        // Array errors
-                        return res.status(400).json({
-                            message: 'Array format error',
-                            error: 'There was an issue with the image array format. Please try with fewer images or smaller image sizes.'
-                        });
-                    }
-                    else {
-                        // Other database errors
-                        return res.status(400).json({
-                            message: 'Database error',
-                            error: dbError.message
-                        });
-                    }
-                }
-                else if (dbError.name === 'SequelizeUniqueConstraintError') {
-                    // Unique constraint violations
-                    return res.status(400).json({
-                        message: 'A product with these details already exists',
-                        errors: dbError.errors.map((e) => ({
-                            field: e.path,
-                            message: `A product with this ${e.path} already exists`
-                        }))
-                    });
-                }
-                else if (dbError.name === 'SequelizeForeignKeyConstraintError') {
-                    // Foreign key constraint violations (e.g., invalid ownerId)
-                    return res.status(400).json({
-                        message: 'Invalid reference data',
-                        error: 'One or more references in your product data are invalid'
-                    });
-                }
-                return res.status(500).json({
-                    message: 'Error creating product in database',
-                    error: dbError.message
-                });
-            }
-        }
-        catch (error) {
-            console.error('Unexpected error in product creation:', error);
-            return res.status(500).json({
-                message: 'Server error processing product creation',
-                error: error.message
-            });
-        }
+        const { name, description, price, category, commissionRate, commissionType, affiliateLink, images, active = true } = req.body;
+        // Create the product
+        const product = await models_1.Product.create({
+            name,
+            description,
+            price,
+            category,
+            commissionRate,
+            commissionType,
+            affiliateLink,
+            images: images || [],
+            active,
+            ownerId: req.user.id
+        });
+        // Return the created product
+        return res.status(201).json({
+            message: 'Product created successfully',
+            product
+        });
     }
     catch (error) {
-        console.error('Unexpected error in product creation:', error);
-        return res.status(500).json({
-            message: 'Server error processing product creation',
-            error: error.message
-        });
+        console.error('Error creating product:', error);
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                message: 'Validation error',
+                errors: error.errors
+            });
+        }
+        return res.status(500).json({ message: 'Failed to create product' });
     }
 });
 // Update a product

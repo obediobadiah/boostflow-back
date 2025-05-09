@@ -37,18 +37,11 @@ router.get('/', authenticate, (async (req: AuthenticatedRequest, res: Response) 
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    console.log('User requesting promotions:', {
-      userId: req.user.id,
-      role: req.user.role
-    });
-
     // Check if user is admin
     const isAdmin = req.user.role === 'admin';
 
     // For admin users, get all promotions
     if (isAdmin) {
-      console.log('Admin user - fetching all promotions');
-      
       const promotions = await Promotion.findAll({
         include: [
           { 
@@ -71,8 +64,6 @@ router.get('/', authenticate, (async (req: AuthenticatedRequest, res: Response) 
         order: [['createdAt', 'DESC']]
       });
 
-      console.log(`Found ${promotions.length} promotions for admin`);
-
       return res.json({
         count: promotions.length,
         promotions,
@@ -81,8 +72,6 @@ router.get('/', authenticate, (async (req: AuthenticatedRequest, res: Response) 
     } 
     
     // For regular users, only get their own promotions
-    console.log('Regular user - fetching own promotions');
-    
     const promotions = await Promotion.findAll({
       where: { promoterId: req.user.id },
       include: [
@@ -105,8 +94,6 @@ router.get('/', authenticate, (async (req: AuthenticatedRequest, res: Response) 
       ],
       order: [['createdAt', 'DESC']]
     });
-
-    console.log(`Found ${promotions.length} promotions for user ${req.user.id}`);
 
     res.json({
       count: promotions.length,
@@ -131,11 +118,6 @@ router.post('/', authenticate, (async (req: AuthenticatedRequest, res: Response)
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    console.log('Received promotion request:', {
-      userId: req.user.id,
-      body: req.body
-    });
-
     const { 
       productId, 
       trackingCode, 
@@ -154,22 +136,12 @@ router.post('/', authenticate, (async (req: AuthenticatedRequest, res: Response)
     // Convert productId to number if it's a string
     const productIdNum = typeof productId === 'string' ? parseInt(productId, 10) : productId;
 
-    console.log('Looking up product:', productIdNum);
-
     // Fetch the product to get its details
     const product = await Product.findByPk(productIdNum);
     
     if (!product) {
-      console.log('Product not found:', productIdNum);
       return res.status(404).json({ error: 'Product not found' });
     }
-
-    console.log('Found product:', {
-      id: product.id,
-      name: product.name,
-      commissionRate: product.commissionRate,
-      commissionType: product.commissionType
-    });
 
     // Generate a tracking code if not provided
     const generatedTrackingCode = trackingCode || `PROMO-${Date.now().toString(36)}`;
@@ -181,11 +153,6 @@ router.post('/', authenticate, (async (req: AuthenticatedRequest, res: Response)
     const finalCommissionRate = commissionRate || product.commissionRate;
     const finalCommissionType = commissionType || product.commissionType;
 
-    console.log('Checking for existing promotion:', {
-      productId: productIdNum,
-      promoterId: req.user.id
-    });
-
     const existingPromotion = await Promotion.findOne({
       where: { 
         productId: productIdNum, 
@@ -194,21 +161,8 @@ router.post('/', authenticate, (async (req: AuthenticatedRequest, res: Response)
     });
 
     if (existingPromotion) {
-      console.log('Promotion already exists:', existingPromotion.id);
       return res.status(400).json({ message: 'You are already promoting this product' });
     }
-
-    console.log('Creating promotion with:', {
-      productId: productIdNum,
-      promoterId: req.user.id,
-      trackingCode: generatedTrackingCode,
-      commissionRate: finalCommissionRate,
-      commissionType: finalCommissionType,
-      description: description || product.description,
-      customImages: customImages || product.images,
-      autoPostToSocial: autoPostToSocial ?? false,
-      affiliateLink: finalAffiliateLink
-    });
 
     const promotion = await Promotion.create({
       productId: productIdNum,
@@ -226,30 +180,16 @@ router.post('/', authenticate, (async (req: AuthenticatedRequest, res: Response)
       affiliateLink: finalAffiliateLink
     });
 
-    console.log('Promotion created successfully:', promotion.id);
-
-    const promotionWithProduct = await Promotion.findByPk(promotion.id, {
-      include: [
-        { 
-          model: Product,
-          as: 'product',
-          include: [
-            {
-              model: User,
-              as: 'owner',
-              attributes: ['id', 'name', 'email']
-            }
-          ]
-        }
-      ]
+    return res.status(201).json({
+      id: promotion.id,
+      trackingCode: promotion.trackingCode,
+      affiliateLink: promotion.affiliateLink,
+      message: 'Promotion created successfully'
     });
-
-    res.status(201).json(promotionWithProduct);
   } catch (error) {
     console.error('Error creating promotion:', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      body: req.body
+      stack: error instanceof Error ? error.stack : undefined
     });
     res.status(500).json({ 
       error: 'Failed to create promotion',

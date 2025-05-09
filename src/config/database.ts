@@ -44,4 +44,21 @@ export const testConnection = async (): Promise<void> => {
   }
 };
 
+// Initialize the database connection
+export const initializeDatabase = async (): Promise<void> => {
+  try {
+    await sequelize.authenticate();
+    // Database connection has been established successfully
+    
+    // Sync models with database
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync({ alter: false }); // Set alter to false to avoid constraint issues
+    }
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    throw error;
+  }
+};
+
+// Export the sequelize instance directly
 export default sequelize; 

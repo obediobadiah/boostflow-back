@@ -70,4 +70,43 @@ export const emailService = {
       return { success: false, error };
     }
   },
+};
+
+export const sendRegistrationEmail = async (user: any): Promise<void> => {
+  try {
+    // Create test account for development
+    let testAccount;
+    if (process.env.NODE_ENV !== 'production') {
+      testAccount = await nodemailer.createTestAccount();
+    }
+
+    // Configure transport
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER || (testAccount ? testAccount.user : ''),
+        pass: process.env.SMTP_PASS || (testAccount ? testAccount.pass : '')
+      }
+    });
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || '"BoostFlow Team" <info@boostflow.com>',
+      to: user.email,
+      subject: 'Welcome to BoostFlow!',
+      text: `Welcome to BoostFlow, ${user.name}!\n\nThank you for registering with us. We're excited to have you on board.\n\nBest regards,\nThe BoostFlow Team`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Welcome to BoostFlow, ${user.name}!</h2>
+          <p>Thank you for registering with us. We're excited to have you on board.</p>
+          <p>Best regards,<br>The BoostFlow Team</p>
+        </div>
+      `
+    });
+  } catch (error) {
+    console.error('Error sending registration email:', error);
+    throw error;
+  }
 }; 

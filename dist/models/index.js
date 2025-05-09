@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initDatabase = exports.SocialMediaAccount = exports.SocialMediaPost = exports.Promotion = exports.Product = exports.User = exports.sequelize = void 0;
+exports.initDatabase = exports.PromotionClick = exports.ProductView = exports.SocialMediaAccount = exports.SocialMediaPost = exports.Promotion = exports.Product = exports.User = exports.sequelize = void 0;
 const database_1 = __importDefault(require("../config/database"));
 exports.sequelize = database_1.default;
 const user_model_1 = __importDefault(require("./user.model"));
@@ -48,6 +48,10 @@ exports.Promotion = promotion_model_1.default;
 Object.defineProperty(exports, "SocialMediaPost", { enumerable: true, get: function () { return promotion_model_1.SocialMediaPost; } });
 const socialMediaAccount_model_1 = __importDefault(require("./socialMediaAccount.model"));
 exports.SocialMediaAccount = socialMediaAccount_model_1.default;
+const productView_model_1 = __importDefault(require("./productView.model"));
+exports.ProductView = productView_model_1.default;
+const promotionClick_model_1 = __importDefault(require("./promotionClick.model"));
+exports.PromotionClick = promotionClick_model_1.default;
 // Define associations
 user_model_1.default.hasMany(product_model_1.default, {
     foreignKey: 'ownerId',
@@ -73,19 +77,44 @@ user_model_1.default.hasMany(socialMediaAccount_model_1.default, {
     onDelete: 'CASCADE'
 });
 socialMediaAccount_model_1.default.belongsTo(user_model_1.default, { foreignKey: 'userId', as: 'user' });
-// Export database initialization function
+// Product view associations
+product_model_1.default.hasMany(productView_model_1.default, {
+    foreignKey: 'productId',
+    as: 'views',
+    onDelete: 'CASCADE'
+});
+productView_model_1.default.belongsTo(product_model_1.default, { foreignKey: 'productId', as: 'product' });
+user_model_1.default.hasMany(productView_model_1.default, {
+    foreignKey: 'userId',
+    as: 'productViews',
+    onDelete: 'SET NULL' // Keep view records even if user is deleted
+});
+productView_model_1.default.belongsTo(user_model_1.default, { foreignKey: 'userId', as: 'user' });
+// Promotion click associations
+promotion_model_1.default.hasMany(promotionClick_model_1.default, {
+    foreignKey: 'promotionId',
+    as: 'promotionClicks',
+    onDelete: 'CASCADE'
+});
+promotionClick_model_1.default.belongsTo(promotion_model_1.default, { foreignKey: 'promotionId', as: 'promotion' });
+user_model_1.default.hasMany(promotionClick_model_1.default, {
+    foreignKey: 'userId',
+    as: 'promotionClicks',
+    onDelete: 'SET NULL' // Keep click records even if user is deleted
+});
+promotionClick_model_1.default.belongsTo(user_model_1.default, { foreignKey: 'userId', as: 'user' });
+// Initialize database
 const initDatabase = async () => {
     try {
+        // Test the database connection
         await database_1.default.authenticate();
         console.log('Database connection established successfully');
-        // In development mode, sync models with database (create tables if they don't exist)
-        if (process.env.NODE_ENV === 'development') {
-            await database_1.default.sync({ alter: true });
-            console.log('Database models synchronized');
-        }
+        // Sync models with database - avoid altering tables to prevent constraint issues
+        await database_1.default.sync({ alter: false, force: false });
+        console.log('Database models synchronized successfully');
     }
     catch (error) {
-        console.error('Unable to connect to the database:', error);
+        console.error('Failed to initialize database:', error);
         throw error;
     }
 };

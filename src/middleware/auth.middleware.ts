@@ -14,35 +14,30 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     // Check if Authorization header exists
     if (!authHeader) {
-      console.log('No auth header provided for:', reqAny.method, reqAny.url);
-      return res.status(401).json({ message: 'Authentication failed: No auth token' });
+      return res.status(401).json({ message: 'No authorization header provided' });
     }
     
     // Check if Authorization header has correct format
     if (!authHeader.startsWith('Bearer ')) {
-      console.log('Invalid auth header format for:', reqAny.method, reqAny.url, 'Header:', authHeader);
-      return res.status(401).json({ message: 'Authentication failed: Invalid token format' });
+      return res.status(401).json({ message: 'Invalid authorization header format' });
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
     if (!token || token.trim() === '') {
-      console.log('Empty token provided for:', reqAny.method, reqAny.url);
-      return res.status(401).json({ message: 'Authentication failed: Empty token' });
+      return res.status(401).json({ message: 'No token provided' });
     }
     
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as JwtPayload;
       
       if (!decoded || !decoded.id) {
-        console.log('Invalid token payload for:', reqAny.method, reqAny.url, 'Decoded:', decoded);
-        return res.status(401).json({ message: 'Authentication failed: Invalid token payload' });
+        return res.status(401).json({ message: 'Invalid token payload' });
       }
       
       const user = await User.findByPk(decoded.id);
       if (!user) {
-        console.log('User not found for token payload:', decoded);
-        return res.status(401).json({ message: 'Authentication failed: User not found' });
+        return res.status(401).json({ message: 'User not found' });
       }
 
       // Add user to request
@@ -50,9 +45,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       
       next();
     } catch (jwtError: any) {
-      console.error('JWT verification error:', jwtError);
+      console.error('Token verification error:', jwtError);
       return res.status(401).json({ 
-        message: 'Authentication failed: Invalid token',
+        message: 'Invalid token',
         error: jwtError.message 
       });
     }

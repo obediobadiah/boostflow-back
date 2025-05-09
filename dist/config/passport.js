@@ -17,20 +17,20 @@ const jwtOptions = {
 };
 passport_1.default.use(new passport_jwt_1.Strategy(jwtOptions, async (payload, done) => {
     try {
-        console.log('JWT Token payload:', payload); // Add debug logging
+        // Validate payload
         if (!payload || !payload.id) {
-            console.log('Invalid token payload:', payload);
-            return done(null, false, { message: 'Invalid token' });
+            return done(null, false);
         }
+        // Find user by ID
         const user = await user_model_1.default.findByPk(payload.id);
-        if (user) {
-            return done(null, user);
+        if (!user) {
+            return done(null, false);
         }
-        console.log('User not found with id:', payload.id);
-        return done(null, false, { message: 'User not found' });
+        // Return user if found
+        return done(null, user);
     }
     catch (error) {
-        console.error('JWT verification error:', error);
+        console.error('JWT authentication error:', error);
         return done(error, false);
     }
 }));

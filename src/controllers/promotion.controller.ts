@@ -34,95 +34,59 @@ const generateTrackingCode = async (): Promise<string> => {
 // Create a new promotion
 export const createPromotion = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
-    const { 
-      productId, 
-      affiliateLink, 
-      description, 
-      customImages,
-      autoPostToSocial 
-    } = req.body;
-    
-    console.log('Creating promotion with data:', {
-      userId,
-      productId,
-      affiliateLink,
-      description,
-      customImages,
-      autoPostToSocial
-    });
-    
+    const { productId, name, description, commissionRate, commissionType, customImages } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    if (!productId) {
+      return res.status(400).json({ message: 'Product ID is required' });
+    }
+
     // Check if product exists
     const product = await Product.findByPk(productId);
     if (!product) {
-      console.log('Product not found:', productId);
-      return res.status(404).json({
-        message: 'Product not found'
-      });
+      return res.status(404).json({ message: `Product not found with ID: ${productId}` });
     }
-    
-    // Check if promotion already exists for this product and promoter
+
+    // Check if user already has a promotion for this product
     const existingPromotion = await Promotion.findOne({
       where: {
         productId,
-        promoterId: userId
+        userId
       }
     });
-    
+
     if (existingPromotion) {
-      console.log('Promotion already exists:', { productId, userId });
-      return res.status(400).json({
-        message: 'You are already promoting this product',
-        promotion: existingPromotion
-      });
+      return res.status(400).json({ message: 'You already have a promotion for this product' });
     }
-    
-    // Create new promotion
-    const trackingCode = await generateTrackingCode();
-    
+
+    // Create the promotion
     const promotionData = {
       productId,
-      promoterId: userId,
-      trackingCode,
-      commissionRate: product.commissionRate,
-      commissionType: product.commissionType,
-      affiliateLink: affiliateLink || product.affiliateLink,
+      userId,
+      name: name || `Promotion for ${product.name}`,
       description: description || product.description,
+      commissionRate: commissionRate || product.commissionRate,
+      commissionType: commissionType || product.commissionType,
       customImages: customImages || product.images,
-      autoPostToSocial: autoPostToSocial || false,
-      status: 'active' as const,
+      status: 'active',
       clicks: 0,
       conversions: 0,
       earnings: 0
     };
 
-    console.log('Creating promotion with data:', promotionData);
-    
     const promotion = await Promotion.create(promotionData);
 
-    // If autoPostToSocial is true, post to connected social media accounts
-    if (autoPostToSocial) {
-      await postToSocialMedia(userId, promotion);
-    }
-    
-    console.log('Promotion created successfully:', promotion.id);
-    
-    res.status(201).json({
+    return res.status(201).json({
       message: 'Promotion created successfully',
       promotion
     });
-  } catch (error: any) {
-    console.error('Error creating promotion:', {
-      error: error.message,
-      stack: error.stack,
-      data: req.body
-    });
-    
-    res.status(500).json({
-      message: 'Error creating promotion',
-      error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+  } catch (error) {
+    console.error('Error creating promotion:', error);
+    return res.status(500).json({ message: 'Failed to create promotion' });
   }
 };
 

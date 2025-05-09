@@ -6,10 +6,15 @@ import dotenv from 'dotenv';
 import passport from 'passport';
 import './config/passport';
 import { errorHandler, notFound } from './middleware/error.middleware';
-import { initDatabase } from './models';
+import { initDatabase, sequelize } from './models';
 
 // Load environment variables
 dotenv.config();
+
+// Debug the sequelize instance
+console.log('Sequelize instance type:', typeof sequelize);
+console.log('Is Sequelize instance:', sequelize instanceof Object);
+console.log('Has define method:', typeof sequelize.define === 'function');
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -17,7 +22,7 @@ import userRoutes from './routes/user.routes';
 import productRoutes from './routes/product.routes';
 import promotionRoutes from './routes/promotion.routes';
 import socialMediaRoutes from './routes/socialMedia.routes';
-import statisticsRoutes from './routes/statistics.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 // Create Express app
 const app = express();
@@ -55,7 +60,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/social-media', socialMediaRoutes);
-app.use('/api/statistics', statisticsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Root route
 app.get('/', (req, res) => {
@@ -74,6 +79,11 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, async () => {
+  // Initialize database connection
+  try {
+    await initDatabase();
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+  }
 }); 
