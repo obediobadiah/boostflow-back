@@ -779,24 +779,21 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
       promotionFilterClause = ` AND (p."promoterId" = :userId OR p."promoterId" IN (:adminUserIds))`;
     }
 
-    // Use raw query to avoid ambiguous column names
+    // Use raw query to count promotions created per week and sum estimated earnings
     let weeklyStatsQuery = `
       SELECT 
-        date_trunc('week', pc."timestamp") as week,
-        COUNT(pc."id") as clicks,
-        SUM(CASE WHEN pc."isConversion" = true THEN 1 ELSE 0 END) as conversions,
-        SUM(pc."earnings") as earnings
+        date_trunc('week', p."createdAt") as week,
+        COUNT(p."id") as promotions_created,
+        SUM(p."earnings") as estimated_earnings
       FROM 
-        promotion_clicks as pc
-      INNER JOIN 
-        promotions as p ON pc."promotionId" = p."id"
+        promotions as p
       WHERE 
-        pc."timestamp" BETWEEN :startDate AND :endDate
+        p."createdAt" BETWEEN :startDate AND :endDate
         ${promotionFilterClause}
       GROUP BY 
-        date_trunc('week', pc."timestamp")
+        date_trunc('week', p."createdAt")
       ORDER BY 
-        date_trunc('week', pc."timestamp") ASC
+        date_trunc('week', p."createdAt") ASC
     `;
 
     // Execute the query
@@ -814,15 +811,12 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
     // Build total stats query
     let totalStatsQuery = `
       SELECT 
-        COUNT(pc."id") as "totalClicks",
-        SUM(CASE WHEN pc."isConversion" = true THEN 1 ELSE 0 END) as "totalConversions",
-        SUM(pc."earnings") as "totalEarnings"
+        COUNT(p."id") as "totalPromotions",
+        SUM(p."earnings") as "totalEstimatedEarnings"
       FROM 
-        promotion_clicks as pc
-      INNER JOIN 
-        promotions as p ON pc."promotionId" = p."id"
+        promotions as p
       WHERE 
-        pc."timestamp" BETWEEN :startDate AND :endDate
+        p."createdAt" BETWEEN :startDate AND :endDate
         ${promotionFilterClause}
     `;
 
@@ -844,15 +838,12 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
 
     let prevMonthQuery = `
       SELECT 
-        COUNT(pc."id") as clicks,
-        SUM(CASE WHEN pc."isConversion" = true THEN 1 ELSE 0 END) as conversions,
-        SUM(pc."earnings") as earnings
+        COUNT(p."id") as promotions,
+        SUM(p."earnings") as earnings
       FROM 
-        promotion_clicks as pc
-      INNER JOIN 
-        promotions as p ON pc."promotionId" = p."id"
+        promotions as p
       WHERE 
-        pc."timestamp" BETWEEN :startDate AND :endDate
+        p."createdAt" BETWEEN :startDate AND :endDate
         ${promotionFilterClause}
     `;
 
@@ -868,7 +859,7 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
       raw: true
     }) as [any, any];
 
-    // If no clicks data found, provide empty data and show zero stats
+    // If no data found, provide empty data and show zero stats
     if (!weeklyStatsResults || !Array.isArray(weeklyStatsResults) || weeklyStatsResults.length === 0) {
       // Calculate number of weeks in the month
       const numWeeksInMonth = getWeeksInMonth(parseInt(year), parseInt(month) - 1);
@@ -877,8 +868,7 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
       for (let i = 1; i <= numWeeksInMonth; i++) {
         weeklyData.push({
           name: `Week ${i}`,
-          clicks: 0,
-          conversions: 0,
+          promotions: 0,
           earnings: 0
         });
       }
@@ -888,14 +878,11 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
         data: {
           weeklyData,
           summary: {
-            totalClicks: 0,
-            totalConversions: 0,
-            totalEarnings: 0,
-            prevMonthClicks: 0,
-            prevMonthConversions: 0,
+            totalPromotions: 0,
+            totalEstimatedEarnings: 0,
+            prevMonthPromotions: 0,
             prevMonthEarnings: 0,
-            clicksPercentChange: '0',
-            conversionsPercentChange: '0',
+            promotionsPercentChange: '0',
             earningsPercentChange: '0'
           }
         }
@@ -910,8 +897,7 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
     for (let i = 1; i <= numWeeksInMonth; i++) {
       weeklyData.push({
         name: `Week ${i}`,
-        clicks: 0,
-        conversions: 0,
+        promotions: 0,
         earnings: 0
       });
     }
@@ -922,30 +908,24 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
       const weekNumber = getWeekNumberInMonth(weekDate, startDate);
 
       if (weekNumber > 0 && weekNumber <= numWeeksInMonth) {
-        const clicks = parseInt(stat.clicks) || 0;
-        const conversions = parseInt(stat.conversions) || 0;
-        const earnings = parseFloat(stat.earnings) || 0;
+        const promotions = parseInt(stat.promotions_created) || 0;
+        const earnings = parseFloat(stat.estimated_earnings) || 0;
 
         weeklyData[weekNumber - 1] = {
           name: `Week ${weekNumber}`,
-          clicks,
-          conversions,
+          promotions,
           earnings
         };
       }
     });
 
     // Calculate percentage changes
-    const clicksPercentChange = prevMonthStats.clicks > 0
-      ? ((totalStats.totalClicks - prevMonthStats.clicks) / prevMonthStats.clicks * 100).toFixed(2)
-      : '100';
-
-    const conversionsPercentChange = prevMonthStats.conversions > 0
-      ? ((totalStats.totalConversions - prevMonthStats.conversions) / prevMonthStats.conversions * 100).toFixed(2)
+    const promotionsPercentChange = prevMonthStats.promotions > 0
+      ? ((totalStats.totalPromotions - prevMonthStats.promotions) / prevMonthStats.promotions * 100).toFixed(2)
       : '100';
 
     const earningsPercentChange = prevMonthStats.earnings > 0
-      ? ((totalStats.totalEarnings - prevMonthStats.earnings) / prevMonthStats.earnings * 100).toFixed(2)
+      ? ((totalStats.totalEstimatedEarnings - prevMonthStats.earnings) / prevMonthStats.earnings * 100).toFixed(2)
       : '100';
 
     res.status(200).json({
@@ -953,14 +933,11 @@ export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
       data: {
         weeklyData,
         summary: {
-          totalClicks: totalStats.totalClicks,
-          totalConversions: totalStats.totalConversions,
-          totalEarnings: totalStats.totalEarnings,
-          prevMonthClicks: prevMonthStats.clicks,
-          prevMonthConversions: prevMonthStats.conversions,
+          totalPromotions: totalStats.totalPromotions,
+          totalEstimatedEarnings: totalStats.totalEstimatedEarnings,
+          prevMonthPromotions: prevMonthStats.promotions,
           prevMonthEarnings: prevMonthStats.earnings,
-          clicksPercentChange,
-          conversionsPercentChange,
+          promotionsPercentChange,
           earningsPercentChange
         }
       }

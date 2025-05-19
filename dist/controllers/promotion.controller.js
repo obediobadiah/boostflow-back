@@ -72,25 +72,43 @@ const createPromotion = async (req, res) => {
         const existingPromotion = await models_1.Promotion.findOne({
             where: {
                 productId,
-                userId
+                promoterId: userId
             }
         });
         if (existingPromotion) {
             return res.status(400).json({ message: 'You already have a promotion for this product' });
         }
+        // Calculate initial earnings based on commission type and product price
+        let initialEarnings = '50$';
+        const finalCommissionRate = commissionRate || product.commissionRate;
+        const finalCommissionType = commissionType || product.commissionType;
+        // Ensure price and commission rate are numbers
+        // const productPrice = parseFloat(product.price.toString());
+        // const commissionRateValue = parseFloat(finalCommissionRate.toString());
+        // if (finalCommissionType === 'percentage' && !isNaN(productPrice) && !isNaN(commissionRateValue)) {
+        //   initialEarnings = (productPrice * commissionRateValue) / 100;
+        //   console.log('Calculated percentage earnings:', initialEarnings);
+        // } else if (finalCommissionType === 'fixed' && !isNaN(commissionRateValue)) {
+        //   initialEarnings = commissionRateValue;
+        //   console.log('Fixed earnings:', initialEarnings);
+        // } else {
+        //   console.log('Could not calculate earnings, using default 0');
+        // }
+        // // Ensure earnings is a valid number
+        // initialEarnings = isNaN(initialEarnings) ? 0 : initialEarnings;
         // Create the promotion
         const promotionData = {
             productId,
-            userId,
+            promoterId: userId,
             name: name || `Promotion for ${product.name}`,
             description: description || product.description,
-            commissionRate: commissionRate || product.commissionRate,
-            commissionType: commissionType || product.commissionType,
+            commissionRate: finalCommissionRate,
+            commissionType: finalCommissionType,
             customImages: customImages || product.images,
             status: 'active',
             clicks: 0,
             conversions: 0,
-            earnings: 0
+            earnings: initialEarnings
         };
         const promotion = await models_1.Promotion.create(promotionData);
         return res.status(201).json({
