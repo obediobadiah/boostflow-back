@@ -55,7 +55,7 @@ export const createProduct = async (req: Request, res: Response) => {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
 
@@ -103,7 +103,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
     
@@ -146,7 +146,7 @@ export const getProductById = async (req: Request, res: Response) => {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
     
@@ -178,7 +178,7 @@ export const getProductsByOwner = async (req: Request, res: Response) => {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
     
@@ -247,7 +247,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
 
@@ -340,7 +340,7 @@ export const duplicateProduct = async (req: Request, res: Response) => {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
     

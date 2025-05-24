@@ -51,14 +51,14 @@ router.get('/', authenticate, (async (req: AuthenticatedRequest, res: Response) 
               {
                 model: User,
                 as: 'owner',
-                attributes: ['id', 'name', 'email']
+                attributes: ['id', 'firstName', 'lastName', 'email']
               }
             ]
           },
           {
             model: User,
             as: 'promoter',
-            attributes: ['id', 'name', 'email', 'role']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role']
           }
         ],
         order: [['createdAt', 'DESC']]
@@ -82,14 +82,14 @@ router.get('/', authenticate, (async (req: AuthenticatedRequest, res: Response) 
             {
               model: User,
               as: 'owner',
-              attributes: ['id', 'name', 'email']
+              attributes: ['id', 'firstName', 'lastName', 'email']
             }
           ]
         },
         {
           model: User,
           as: 'promoter',
-          attributes: ['id', 'name', 'email', 'role']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -221,7 +221,7 @@ router.get('/:id', authenticate, (async (req: AuthenticatedRequest, res: Respons
             {
               model: User,
               as: 'owner',
-              attributes: ['id', 'name', 'email']
+              attributes: ['id', 'firstName', 'lastName', 'email']
             }
           ]
         }
@@ -279,7 +279,7 @@ router.put('/:id', authenticate, (async (req: AuthenticatedRequest, res: Respons
             {
               model: User,
               as: 'owner',
-              attributes: ['id', 'name', 'email']
+              attributes: ['id', 'firstName', 'lastName', 'email']
             }
           ]
         }

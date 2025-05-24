@@ -26,7 +26,8 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 
 // Update user profile validation
 const validateProfileUpdate = [
-  body('name').optional().notEmpty().withMessage('Name cannot be empty'),
+  body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
+  body('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
   body('email').optional().isEmail().withMessage('Valid email is required'),
   body('profilePicture').optional().isURL().withMessage('Profile picture must be a valid URL'),
 ];
@@ -36,7 +37,8 @@ const validateProfileUpdate = [
 const mapUserResponse = (user: any) => {
   return {
     id: user.id,
-    name: user.name,
+    firstName: user.firstName,
+    lastName: user.lastName,
     email: user.email,
     role: user.role,
     active: user.active,
@@ -50,7 +52,7 @@ const mapUserResponse = (user: any) => {
 router.get('/', authenticate, isAdmin, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll({
-      attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt']
+      attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt']
     });
     res.json(users);
   } catch (error) {
@@ -63,7 +65,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
   try {
     const { id } = req.params;
     const user = await User.findByPk(id, {
-      attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt']
+      attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt']
     });
     
     if (!user) {
@@ -92,11 +94,12 @@ router.put(
       }
 
       const user = req.user as any;
-      const { name, email, profilePicture } = req.body;
+      const { firstName, lastName, email, profilePicture } = req.body;
       
       // Only update the fields that were sent
       const updateData: any = {};
-      if (name) updateData.name = name;
+      if (firstName) updateData.firstName = firstName;
+      if (lastName) updateData.lastName = lastName;
       if (email) updateData.email = email;
       if (profilePicture) updateData.profilePicture = profilePicture;
       
@@ -105,7 +108,7 @@ router.put(
       
       // Get updated user data
       const updatedUser = await User.findByPk(user.id, {
-        attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'createdAt']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'createdAt']
       });
       
       res.json({ 
@@ -209,7 +212,7 @@ router.put(
       
       // Get updated user data
       const updatedUser = await User.findByPk(id, {
-        attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
       });
       
       res.json({ 
@@ -238,7 +241,7 @@ router.put(
       }
 
       const { id } = req.params;
-      const { name, email, role, active, password } = req.body;
+      const { firstName, lastName, email, role, active, password } = req.body;
       
       // Ensure the user exists
       const user = await User.findByPk(id);
@@ -249,7 +252,8 @@ router.put(
       
       // Create update payload without password
       const updateData: any = {};
-      if (name !== undefined) updateData.name = name;
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
       if (email !== undefined) updateData.email = email;
       if (role !== undefined) updateData.role = role;
       if (active !== undefined) updateData.active = active;
@@ -269,7 +273,7 @@ router.put(
       
       // Get updated user data
       const updatedUser = await User.findByPk(id, {
-        attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
       });
       
       res.json({ 

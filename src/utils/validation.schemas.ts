@@ -1,12 +1,18 @@
-import Joi from 'joi';
+import * as Joi from 'joi';
 
 // User validation schemas
 export const registerSchema = Joi.object({
-  name: Joi.string().min(2).max(50).required()
+  firstName: Joi.string().min(2).max(50).required()
     .messages({
-      'string.min': 'Name must be at least 2 characters long',
-      'string.max': 'Name cannot exceed 50 characters',
-      'any.required': 'Name is required',
+      'string.min': 'First name must be at least 2 characters long',
+      'string.max': 'First name cannot exceed 50 characters',
+      'any.required': 'First name is required',
+    }),
+  lastName: Joi.string().min(2).max(50).required()
+    .messages({
+      'string.min': 'Last name must be at least 2 characters long',
+      'string.max': 'Last name cannot exceed 50 characters',
+      'any.required': 'Last name is required',
     }),
   email: Joi.string().email().required()
     .messages({
@@ -18,6 +24,13 @@ export const registerSchema = Joi.object({
       'string.min': 'Password must be at least 6 characters long',
       'any.required': 'Password is required',
     }),
+  phone: Joi.string().allow('', null),
+  company: Joi.string().allow('', null),
+  website: Joi.string().uri().allow('', null)
+    .messages({
+      'string.uri': 'Website must be a valid URL',
+    }),
+  bio: Joi.string().allow('', null),
   role: Joi.string().valid('business', 'promoter').default('business')
     .messages({
       'any.only': 'Role must be either "business" or "promoter"',

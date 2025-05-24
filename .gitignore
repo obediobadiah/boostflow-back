@@ -64,3 +64,9 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# seeders
+src/seeders/*
+
+# migrations
+src/migrations/*

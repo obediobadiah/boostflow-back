@@ -21,7 +21,8 @@ const isAdmin = (req, res, next) => {
 };
 // Update user profile validation
 const validateProfileUpdate = [
-    (0, express_validator_1.body)('name').optional().notEmpty().withMessage('Name cannot be empty'),
+    (0, express_validator_1.body)('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
+    (0, express_validator_1.body)('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
     (0, express_validator_1.body)('email').optional().isEmail().withMessage('Valid email is required'),
     (0, express_validator_1.body)('profilePicture').optional().isURL().withMessage('Profile picture must be a valid URL'),
 ];
@@ -30,7 +31,8 @@ const validateProfileUpdate = [
 const mapUserResponse = (user) => {
     return {
         id: user.id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.role,
         active: user.active,
@@ -43,7 +45,7 @@ const mapUserResponse = (user) => {
 router.get('/', authenticate, isAdmin, async (_req, res, next) => {
     try {
         const users = await models_1.User.findAll({
-            attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt']
         });
         res.json(users);
     }
@@ -56,7 +58,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
     try {
         const { id } = req.params;
         const user = await models_1.User.findByPk(id, {
-            attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt']
         });
         if (!user) {
             res.status(404).json({ message: 'User not found' });
@@ -78,11 +80,13 @@ router.put('/profile', authenticate, validateProfileUpdate, async (req, res, nex
             return;
         }
         const user = req.user;
-        const { name, email, profilePicture } = req.body;
+        const { firstName, lastName, email, profilePicture } = req.body;
         // Only update the fields that were sent
         const updateData = {};
-        if (name)
-            updateData.name = name;
+        if (firstName)
+            updateData.firstName = firstName;
+        if (lastName)
+            updateData.lastName = lastName;
         if (email)
             updateData.email = email;
         if (profilePicture)
@@ -91,7 +95,7 @@ router.put('/profile', authenticate, validateProfileUpdate, async (req, res, nex
         await models_1.User.update(updateData, { where: { id: user.id } });
         // Get updated user data
         const updatedUser = await models_1.User.findByPk(user.id, {
-            attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'createdAt']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'createdAt']
         });
         res.json({
             message: 'Profile updated successfully',
@@ -172,7 +176,7 @@ router.put('/:id/role', authenticate, isAdmin, [
         await models_1.User.update({ role }, { where: { id } });
         // Get updated user data
         const updatedUser = await models_1.User.findByPk(id, {
-            attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
         });
         res.json({
             message: 'User role updated successfully',
@@ -193,7 +197,7 @@ router.put('/:id', authenticate, isAdmin, validateProfileUpdate, async (req, res
             return;
         }
         const { id } = req.params;
-        const { name, email, role, active, password } = req.body;
+        const { firstName, lastName, email, role, active, password } = req.body;
         // Ensure the user exists
         const user = await models_1.User.findByPk(id);
         if (!user) {
@@ -202,8 +206,10 @@ router.put('/:id', authenticate, isAdmin, validateProfileUpdate, async (req, res
         }
         // Create update payload without password
         const updateData = {};
-        if (name !== undefined)
-            updateData.name = name;
+        if (firstName !== undefined)
+            updateData.firstName = firstName;
+        if (lastName !== undefined)
+            updateData.lastName = lastName;
         if (email !== undefined)
             updateData.email = email;
         if (role !== undefined)
@@ -223,7 +229,7 @@ router.put('/:id', authenticate, isAdmin, validateProfileUpdate, async (req, res
         }
         // Get updated user data
         const updatedUser = await models_1.User.findByPk(id, {
-            attributes: ['id', 'name', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'profilePicture', 'active', 'createdAt', 'updatedAt']
         });
         res.json({
             message: 'User updated successfully',

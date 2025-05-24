@@ -14,25 +14,6 @@ const {
 } = process.env;
 
 async function createDatabase() {
-  // First try connecting to the target database directly
-  try {
-    const targetClient = new Client({
-      user: DB_USER,
-      password: DB_PASSWORD,
-      host: DB_HOST,
-      port: DB_PORT,
-      database: DB_NAME
-    });
-
-    await targetClient.connect();
-    console.log(`Database '${DB_NAME}' already exists and is accessible`);
-    await targetClient.end();
-    return;
-  } catch (error) {
-    console.log(`Could not connect to database '${DB_NAME}': ${error.message}`);
-    console.log('Attempting to create the database...');
-  }
-
   // Connect to default 'postgres' database to create our database
   const adminClient = new Client({
     user: DB_USER,
@@ -60,10 +41,10 @@ async function createDatabase() {
     } else {
       console.log(`Database '${DB_NAME}' already exists`);
     }
+
   } catch (error) {
     console.error('Error initializing database:', error);
-    console.log('Please create the PostgreSQL database manually with:');
-    console.log(`createdb ${DB_NAME}`);
+    throw error;
   } finally {
     try {
       await adminClient.end();
@@ -75,5 +56,11 @@ async function createDatabase() {
 
 // Run the initialization
 createDatabase()
-  .then(() => console.log('Database initialization completed'))
-  .catch(error => console.error('Database initialization failed:', error)); 
+  .then(() => {
+    console.log('Database initialization completed');
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error('Database initialization failed:', error);
+    process.exit(1);
+  }); 

@@ -96,10 +96,10 @@ export const sendRegistrationEmail = async (user: any): Promise<void> => {
       from: process.env.EMAIL_FROM || '"BoostFlow Team" <info@boostflow.com>',
       to: user.email,
       subject: 'Welcome to BoostFlow!',
-      text: `Welcome to BoostFlow, ${user.name}!\n\nThank you for registering with us. We're excited to have you on board.\n\nBest regards,\nThe BoostFlow Team`,
+      text: `Welcome to BoostFlow, ${user.firstName} ${user.lastName}!\n\nThank you for registering with us. We're excited to have you on board.\n\nBest regards,\nThe BoostFlow Team`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Welcome to BoostFlow, ${user.name}!</h2>
+          <h2>Welcome to BoostFlow, ${user.firstName} ${user.lastName}!</h2>
           <p>Thank you for registering with us. We're excited to have you on board.</p>
           <p>Best regards,<br>The BoostFlow Team</p>
         </div>

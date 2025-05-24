@@ -17,11 +17,13 @@ router.use((0, cors_1.default)({
 }));
 // Validation middleware
 const validateRegister = [
-    (0, express_validator_1.body)('name').notEmpty().withMessage('Name is required'),
+    (0, express_validator_1.body)('firstName').notEmpty().withMessage('First name is required'),
+    (0, express_validator_1.body)('lastName').notEmpty().withMessage('Last name is required'),
     (0, express_validator_1.body)('email').isEmail().withMessage('Valid email is required'),
     (0, express_validator_1.body)('password')
         .isLength({ min: 6 })
         .withMessage('Password must be at least 6 characters long'),
+    (0, express_validator_1.body)('website').optional().isURL().withMessage('Website must be a valid URL'),
 ];
 const validateLogin = [
     (0, express_validator_1.body)('email').isEmail().withMessage('Valid email is required'),
@@ -35,7 +37,8 @@ const generateToken = (user) => {
 const getUserData = (user) => {
     return {
         id: user.id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.role,
         active: user.active,
@@ -58,7 +61,7 @@ router.post('/register', validateRegister, async (req, res, next) => {
             res.status(400).json({ errors: errors.array() });
             return;
         }
-        const { name, email, password, role } = req.body;
+        const { firstName, lastName, email, password, phone, company, website, bio, role } = req.body;
         // Check if user already exists
         const existingUser = await models_1.User.findOne({ where: { email } });
         if (existingUser) {
@@ -67,9 +70,14 @@ router.post('/register', validateRegister, async (req, res, next) => {
         }
         // Create new user
         const user = await models_1.User.create({
-            name,
+            firstName,
+            lastName,
             email,
             password, // Password will be hashed by the model hook
+            phone,
+            company,
+            website,
+            bio,
             role: role || 'business',
         });
         // Generate JWT token
@@ -77,7 +85,17 @@ router.post('/register', validateRegister, async (req, res, next) => {
         res.status(201).json({
             message: 'User registered successfully',
             token,
-            user: getUserData(user),
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone,
+                company: user.company,
+                website: user.website,
+                bio: user.bio,
+                role: user.role,
+            },
         });
     }
     catch (error) {

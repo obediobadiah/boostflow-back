@@ -69,6 +69,8 @@ const SocialMediaAccount = database_1.default.define('SocialMediaAccount', {
         {
             unique: true,
             fields: ['userId', 'platform'],
+            name: 'social_media_accounts_user_id_platform_unique',
+            using: 'BTREE'
         },
     ],
 });

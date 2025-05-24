@@ -1,25 +1,30 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import sequelize from '../config/database';
 
 // User attributes interface
 interface UserAttributes {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
+  phone?: string;
+  company?: string;
+  website?: string;
+  bio?: string;
   profilePicture?: string;
   googleId?: string;
   facebookId?: string;
   twitterId?: string;
-  role?: string;
-  active?: boolean;
+  role: 'admin' | 'business' | 'promoter';
+  active: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 // User creation attributes interface (optional id for creation)
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'password'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'password' | 'active'> {}
 
 // User instance methods interface
 interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, UserAttributes {
@@ -27,7 +32,7 @@ interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, Us
 }
 
 // Create User model
-const User = sequelize.define<UserInstance>(
+const User = sequelize.define<UserInstance, UserAttributes>(
   'User',
   {
     id: {
@@ -35,7 +40,15 @@ const User = sequelize.define<UserInstance>(
       autoIncrement: true,
       primaryKey: true,
     },
-    name: {
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [2, 50],
+      },
+    },
+    lastName: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
@@ -58,6 +71,25 @@ const User = sequelize.define<UserInstance>(
         len: [6, 100],
       },
     },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    company: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    website: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: true,
+      },
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     profilePicture: {
       type: DataTypes.STRING,
       defaultValue: '',
@@ -78,12 +110,16 @@ const User = sequelize.define<UserInstance>(
       allowNull: true,
     },
     role: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.ENUM('admin', 'business', 'promoter'),
+      allowNull: false,
       defaultValue: 'business',
+      validate: {
+        isIn: [['admin', 'business', 'promoter']]
+      }
     },
     active: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: true,
     },
   },

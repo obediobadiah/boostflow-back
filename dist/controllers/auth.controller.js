@@ -12,7 +12,7 @@ const email_service_1 = require("../services/email.service");
 // Register a new user
 const register = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { firstName, lastName, email, password, phone, company, website, bio, role } = req.body;
         // Check if user already exists
         const existingUser = await models_1.User.findOne({ where: { email } });
         if (existingUser) {
@@ -25,22 +25,33 @@ const register = async (req, res) => {
         const hashedPassword = await bcryptjs_1.default.hash(password, salt);
         // Create a new user
         const user = await models_1.User.create({
-            name,
+            firstName,
+            lastName,
             email,
             password: hashedPassword,
-            role: role || 'business',
+            phone,
+            company,
+            website,
+            bio,
+            role: 'business',
+            active: true,
         });
         // Generate JWT token
         const token = generateToken(user);
         // Return user without password
         const userWithoutPassword = {
             id: user.id,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
+            phone: user.phone,
+            company: user.company,
+            website: user.website,
+            bio: user.bio,
             role: user.role,
         };
         // Send confirmation email
-        const emailResult = await email_service_1.emailService.sendConfirmationEmail(name, email);
+        const emailResult = await email_service_1.emailService.sendConfirmationEmail(`${firstName} ${lastName}`, email);
         // Include email preview URL in development mode
         const emailInfo = process.env.NODE_ENV === 'development'
             ? { emailPreviewUrl: emailResult.previewUrl }
@@ -86,7 +97,8 @@ const login = (req, res) => {
         // Return user without password
         const userWithoutPassword = {
             id: user.id,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
             role: user.role,
             active: user.active
@@ -105,7 +117,7 @@ const getCurrentUser = (req, res) => {
     // Return user without password
     const userWithoutPassword = {
         id: user.id,
-        name: user.name,
+        name: user.firstName + ' ' + user.lastName,
         email: user.email,
         role: user.role,
         profilePicture: user.profilePicture,
@@ -118,12 +130,9 @@ const getCurrentUser = (req, res) => {
 exports.getCurrentUser = getCurrentUser;
 // Helper function to generate JWT token
 const generateToken = (user) => {
-    const payload = {
+    return jsonwebtoken_1.default.sign({
         id: user.id,
         email: user.email,
-        role: user.role || 'business',
-    };
-    return jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: '7d', // Token expires in 7 days
-    });
+        role: user.role
+    }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };

@@ -44,7 +44,9 @@ interface PromotionCreationAttributes
 // Promotion instance interface
 interface PromotionInstance
   extends Model<PromotionAttributes, PromotionCreationAttributes>,
-    PromotionAttributes {}
+    PromotionAttributes {
+  name: any;
+}
 
 // Create Promotion model
 const Promotion = sequelize.define<PromotionInstance>(

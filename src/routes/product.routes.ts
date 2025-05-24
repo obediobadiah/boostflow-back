@@ -1,7 +1,7 @@
-import express, { Request as ExpressRequest, Response, NextFunction } from 'express';
+import express, { Request as ExpressRequest, Response, NextFunction, RequestHandler } from 'express';
 import passport from 'passport';
 import { Product, User } from '../models';
-import { body, param, validationResult } from 'express-validator';
+import { body, param, validationResult, ValidationError } from 'express-validator';
 import { duplicateProduct } from '../controllers/product.controller';
 
 const router = express.Router();
@@ -65,7 +65,7 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'name', 'email', 'profilePicture']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'role', 'active']
         }
       ]
     });
@@ -87,7 +87,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'name', 'email', 'profilePicture']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'role', 'active']
         }
       ]
     });
@@ -109,7 +109,7 @@ router.post('/', authenticate, [
   body('category').notEmpty().withMessage('Category is required'),
   body('commissionRate').isNumeric().withMessage('Commission rate must be a number'),
   body('commissionType').isIn(['percentage', 'fixed']).withMessage('Commission type must be either percentage or fixed')
-], async (req: Request, res: Response) => {
+], (async (req: Request, res: Response) => {
   try {
     // Check for validation errors
     const errors = validationResult(req);
@@ -152,10 +152,10 @@ router.post('/', authenticate, [
       message: 'Product created successfully',
       product
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating product:', error);
     
-    if (error instanceof ValidationError) {
+    if (error && typeof error === 'object' && 'errors' in error) {
       return res.status(400).json({
         message: 'Validation error',
         errors: error.errors
@@ -164,7 +164,7 @@ router.post('/', authenticate, [
     
     return res.status(500).json({ message: 'Failed to create product' });
   }
-});
+}) as unknown as RequestHandler);
 
 // Update a product
 router.put('/:id', authenticate, validateProductUpdate, async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -249,7 +249,7 @@ router.get('/owner/:id', async (req: Request, res: Response, next: NextFunction)
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'name', 'email', 'profilePicture']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'role', 'active']
         }
       ]
     });
@@ -305,7 +305,7 @@ router.post('/:id/duplicate', authenticate, async (req: Request, res: Response, 
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'name', 'email', 'profilePicture']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
       }]
     });
     

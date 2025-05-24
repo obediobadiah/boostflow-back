@@ -106,10 +106,15 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
               } else {
                 // Create a new user
                 console.log('Creating new user from Google profile');
+                const nameParts = profile.displayName?.split(' ') || ['', ''];
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                
                 user = await User.create({
                   googleId: profile.id,
                   email: profile.emails?.[0].value || '',
-                  name: profile.displayName || '',
+                  firstName,
+                  lastName,
                   profilePicture: profile.photos?.[0].value || '',
                   role: 'business',
                 });

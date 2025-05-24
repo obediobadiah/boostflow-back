@@ -13,7 +13,15 @@ const User = database_1.default.define('User', {
         autoIncrement: true,
         primaryKey: true,
     },
-    name: {
+    firstName: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: false,
+        validate: {
+            notEmpty: true,
+            len: [2, 50],
+        },
+    },
+    lastName: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
         validate: {
@@ -36,6 +44,25 @@ const User = database_1.default.define('User', {
             len: [6, 100],
         },
     },
+    phone: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+    },
+    company: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+    },
+    website: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        validate: {
+            isUrl: true,
+        },
+    },
+    bio: {
+        type: sequelize_1.DataTypes.TEXT,
+        allowNull: true,
+    },
     profilePicture: {
         type: sequelize_1.DataTypes.STRING,
         defaultValue: '',
@@ -56,12 +83,16 @@ const User = database_1.default.define('User', {
         allowNull: true,
     },
     role: {
-        type: sequelize_1.DataTypes.STRING,
-        allowNull: true,
+        type: sequelize_1.DataTypes.ENUM('admin', 'business', 'promoter'),
+        allowNull: false,
         defaultValue: 'business',
+        validate: {
+            isIn: [['admin', 'business', 'promoter']]
+        }
     },
     active: {
         type: sequelize_1.DataTypes.BOOLEAN,
+        allowNull: false,
         defaultValue: true,
     },
 }, {

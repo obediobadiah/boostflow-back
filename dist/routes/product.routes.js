@@ -52,7 +52,7 @@ router.get('/', async (_req, res, next) => {
                 {
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'role', 'active']
                 }
             ]
         });
@@ -74,7 +74,7 @@ router.get('/:id', async (req, res, next) => {
                 {
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'role', 'active']
                 }
             ]
         });
@@ -94,7 +94,7 @@ router.post('/', authenticate, [
     (0, express_validator_1.body)('category').notEmpty().withMessage('Category is required'),
     (0, express_validator_1.body)('commissionRate').isNumeric().withMessage('Commission rate must be a number'),
     (0, express_validator_1.body)('commissionType').isIn(['percentage', 'fixed']).withMessage('Commission type must be either percentage or fixed')
-], async (req, res) => {
+], (async (req, res) => {
     try {
         // Check for validation errors
         const errors = (0, express_validator_1.validationResult)(req);
@@ -126,7 +126,7 @@ router.post('/', authenticate, [
     }
     catch (error) {
         console.error('Error creating product:', error);
-        if (error instanceof ValidationError) {
+        if (error && typeof error === 'object' && 'errors' in error) {
             return res.status(400).json({
                 message: 'Validation error',
                 errors: error.errors
@@ -134,7 +134,7 @@ router.post('/', authenticate, [
         }
         return res.status(500).json({ message: 'Failed to create product' });
     }
-});
+}));
 // Update a product
 router.put('/:id', authenticate, validateProductUpdate, async (req, res, next) => {
     try {
@@ -207,7 +207,7 @@ router.get('/owner/:id', async (req, res, next) => {
                 {
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'role', 'active']
                 }
             ]
         });
@@ -257,7 +257,7 @@ router.post('/:id/duplicate', authenticate, async (req, res, next) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         return res.status(201).json({

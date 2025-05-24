@@ -1,20 +1,55 @@
-const { execSync } = require('child_process');
+const { Sequelize } = require('sequelize');
+const dotenv = require('dotenv');
 const path = require('path');
 
-// Set the NODE_ENV to development by default
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-console.log(`Running migrations in ${process.env.NODE_ENV} environment`);
+const {
+  DB_NAME = 'boostflow',
+  DB_USER = 'obediobadiah',
+  DB_PASSWORD = '',
+  DB_HOST = 'localhost',
+  DB_PORT = '5432'
+} = process.env;
 
-try {
-  // Run the migrations using Sequelize CLI
-  execSync('npx sequelize-cli db:migrate', {
-    cwd: path.resolve(__dirname, '..'),
-    stdio: 'inherit'
-  });
-  
-  console.log('Migrations completed successfully');
-} catch (error) {
-  console.error('Error running migrations:', error.message);
-  process.exit(1);
-} 
+const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
+  host: DB_HOST,
+  port: DB_PORT,
+  dialect: 'postgres',
+  logging: console.log
+});
+
+async function runMigrations() {
+  try {
+    await sequelize.authenticate();
+    console.log('Connected to database successfully');
+
+    // Import all models
+    require('../dist/models');
+
+    // Sync all models with the database - only alter tables, never drop
+    await sequelize.sync({ 
+      alter: true,    // Alter tables to match models
+      force: false    // Never force recreate tables
+    });
+    console.log('Database synchronized successfully');
+
+  } catch (error) {
+    console.error('Error running migrations:', error);
+    throw error;
+  } finally {
+    await sequelize.close();
+  }
+}
+
+// Run the migrations
+runMigrations()
+  .then(() => {
+    console.log('Migrations completed successfully');
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error('Migrations failed:', error);
+    process.exit(1);
+  }); 

@@ -109,8 +109,19 @@ const initDatabase = async () => {
         // Test the database connection
         await database_1.default.authenticate();
         console.log('Database connection established successfully');
-        // Sync models with database - avoid altering tables to prevent constraint issues
-        await database_1.default.sync({ alter: false, force: false });
+        // First create the enum type if it doesn't exist
+        await database_1.default.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."enum_users_role" AS ENUM('admin', 'business', 'promoter');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+        // Then sync models with database - only alter tables, never drop
+        await database_1.default.sync({
+            alter: true, // Alter tables to match models
+            force: false // Never force recreate tables
+        });
         console.log('Database models synchronized successfully');
     }
     catch (error) {

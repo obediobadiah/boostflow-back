@@ -37,7 +37,7 @@ const createProduct = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         res.status(201).json({
@@ -79,7 +79,7 @@ const getAllProducts = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         res.status(200).json({
@@ -118,7 +118,7 @@ const getProductById = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         if (!product) {
@@ -148,7 +148,7 @@ const getProductsByOwner = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         res.status(200).json({
@@ -201,7 +201,7 @@ const updateProduct = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         res.status(200).json({
@@ -286,7 +286,7 @@ const duplicateProduct = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'owner',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }]
         });
         res.status(201).json({

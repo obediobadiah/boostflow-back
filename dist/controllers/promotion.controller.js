@@ -32,10 +32,14 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addSocialMediaPost = exports.trackConversion = exports.trackClick = exports.getPromotionsByProduct = exports.getPromotionsByPromoter = exports.createPromotion = void 0;
+exports.addSocialMediaPost = exports.trackClick = exports.getPromotionsByProduct = exports.getPromotionsByPromoter = exports.createPromotion = void 0;
 const models_1 = require("../models");
 const crypto = __importStar(require("crypto"));
+const earnings_model_1 = __importDefault(require("../models/earnings.model"));
 // Implementation of generateTrackingCode to avoid import issues
 const generateTrackingCode = async () => {
     // Generate a random string
@@ -78,24 +82,19 @@ const createPromotion = async (req, res) => {
         if (existingPromotion) {
             return res.status(400).json({ message: 'You already have a promotion for this product' });
         }
-        // Calculate initial earnings based on commission type and product price
-        let initialEarnings = '50$';
+        // Calculate earnings based on commission type and product price
+        let earnings = 0;
         const finalCommissionRate = commissionRate || product.commissionRate;
         const finalCommissionType = commissionType || product.commissionType;
-        // Ensure price and commission rate are numbers
-        // const productPrice = parseFloat(product.price.toString());
-        // const commissionRateValue = parseFloat(finalCommissionRate.toString());
-        // if (finalCommissionType === 'percentage' && !isNaN(productPrice) && !isNaN(commissionRateValue)) {
-        //   initialEarnings = (productPrice * commissionRateValue) / 100;
-        //   console.log('Calculated percentage earnings:', initialEarnings);
-        // } else if (finalCommissionType === 'fixed' && !isNaN(commissionRateValue)) {
-        //   initialEarnings = commissionRateValue;
-        //   console.log('Fixed earnings:', initialEarnings);
-        // } else {
-        //   console.log('Could not calculate earnings, using default 0');
-        // }
-        // // Ensure earnings is a valid number
-        // initialEarnings = isNaN(initialEarnings) ? 0 : initialEarnings;
+        if (finalCommissionType === 'percentage') {
+            earnings = (product.price * finalCommissionRate) / 100;
+        }
+        else if (finalCommissionType === 'fixed') {
+            earnings = finalCommissionRate;
+        }
+        // Generate tracking code and affiliate link
+        const trackingCode = crypto.randomBytes(8).toString('hex');
+        const affiliateLink = `${process.env.FRONTEND_URL}/promo/${trackingCode}`;
         // Create the promotion
         const promotionData = {
             productId,
@@ -107,18 +106,34 @@ const createPromotion = async (req, res) => {
             customImages: customImages || product.images,
             status: 'active',
             clicks: 0,
-            conversions: 0,
-            earnings: initialEarnings
+            earnings: earnings,
+            trackingCode: trackingCode,
+            affiliateLink: affiliateLink
         };
         const promotion = await models_1.Promotion.create(promotionData);
-        return res.status(201).json({
+        // Create earnings record immediately
+        await earnings_model_1.default.create({
+            userId: userId,
+            promotionId: promotion.id,
+            amount: earnings,
+            type: 'commission',
+            status: 'pending',
+            description: `Commission from promotion: ${promotion.name}`,
+            metadata: {
+                commissionType: finalCommissionType,
+                commissionRate: finalCommissionRate
+            }
+        });
+        res.status(201).json({
             message: 'Promotion created successfully',
             promotion
         });
     }
     catch (error) {
-        console.error('Error creating promotion:', error);
-        return res.status(500).json({ message: 'Failed to create promotion' });
+        res.status(500).json({
+            message: 'Error creating promotion',
+            error: error.message
+        });
     }
 };
 exports.createPromotion = createPromotion;
@@ -166,7 +181,7 @@ const getPromotionsByProduct = async (req, res) => {
             include: [{
                     model: models_1.User,
                     as: 'promoter',
-                    attributes: ['id', 'name', 'email', 'profilePicture']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }],
             order: [['clicks', 'DESC']]
         });
@@ -211,46 +226,6 @@ const trackClick = async (req, res) => {
     }
 };
 exports.trackClick = trackClick;
-// Track conversion
-const trackConversion = async (req, res) => {
-    try {
-        const { trackingCode } = req.params;
-        const { saleAmount } = req.body;
-        const promotion = await models_1.Promotion.findOne({
-            where: { trackingCode }
-        });
-        if (!promotion) {
-            return res.status(404).json({
-                message: 'Promotion not found'
-            });
-        }
-        // Calculate new earnings based on commission type
-        let newEarnings = promotion.earnings;
-        if (promotion.commissionType === 'percentage' && saleAmount) {
-            newEarnings += (saleAmount * promotion.commissionRate) / 100;
-        }
-        else if (promotion.commissionType === 'fixed') {
-            newEarnings += promotion.commissionRate;
-        }
-        // Update promotion
-        await promotion.update({
-            conversions: promotion.conversions + 1,
-            earnings: newEarnings
-        });
-        const updatedPromotion = await models_1.Promotion.findByPk(promotion.id);
-        res.status(200).json({
-            message: 'Conversion tracked successfully',
-            promotion: updatedPromotion
-        });
-    }
-    catch (error) {
-        res.status(500).json({
-            message: 'Error tracking conversion',
-            error: error.message
-        });
-    }
-};
-exports.trackConversion = trackConversion;
 // Post to social media accounts
 const postToSocialMedia = async (userId, promotion) => {
     try {

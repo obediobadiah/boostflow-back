@@ -9,9 +9,14 @@ import { UserAttributes, UserInstance } from '../models/user.model';
 // Extend the Express Request type to include body
 interface ExtendedRequest extends Request {
   body: {
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
+    phone?: string;
+    company?: string;
+    website?: string;
+    bio?: string;
     role?: string;
   };
 }
@@ -19,7 +24,8 @@ interface ExtendedRequest extends Request {
 // Define a type for the user object
 interface AuthUserAttributes {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role?: string;
   password: string;
@@ -29,7 +35,7 @@ interface AuthUserAttributes {
 // Register a new user
 export const register = async (req: ExtendedRequest, res: Response) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { firstName, lastName, email, password, phone, company, website, bio, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -45,25 +51,36 @@ export const register = async (req: ExtendedRequest, res: Response) => {
 
     // Create a new user
     const user = await User.create({
-      name,
+      firstName,
+      lastName,
       email,
       password: hashedPassword,
-      role: role || 'business',
+      phone,
+      company,
+      website,
+      bio,
+      role: 'business' as 'admin' | 'business' | 'promoter',
+      active: true,
     });
 
     // Generate JWT token
-    const token = generateToken(user as UserAttributes);
+    const token = generateToken(user);
 
     // Return user without password
     const userWithoutPassword = {
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
+      phone: user.phone,
+      company: user.company,
+      website: user.website,
+      bio: user.bio,
       role: user.role,
     };
 
     // Send confirmation email
-    const emailResult = await emailService.sendConfirmationEmail(name, email);
+    const emailResult = await emailService.sendConfirmationEmail(`${firstName} ${lastName}`, email);
     
     // Include email preview URL in development mode
     const emailInfo = process.env.NODE_ENV === 'development' 
@@ -114,7 +131,8 @@ export const login = (req: ExtendedRequest, res: Response) => {
     // Return user without password
     const userWithoutPassword = {
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       role: user.role,
       active: user.active
@@ -135,7 +153,7 @@ export const getCurrentUser = (req: Request, res: Response) => {
   // Return user without password
   const userWithoutPassword = {
     id: user.id,
-    name: user.name,
+    name: user.firstName + ' ' + user.lastName,
     email: user.email,
     role: user.role,
     profilePicture: user.profilePicture,
@@ -148,14 +166,14 @@ export const getCurrentUser = (req: Request, res: Response) => {
 };
 
 // Helper function to generate JWT token
-const generateToken = (user: UserInstance | AuthUserAttributes) => {
-  const payload = {
-    id: user.id,
-    email: user.email,
-    role: user.role || 'business',
-  };
-
-  return jwt.sign(payload, process.env.JWT_SECRET as string, {
-    expiresIn: '7d', // Token expires in 7 days
-  });
+const generateToken = (user: UserInstance) => {
+  return jwt.sign(
+    { 
+      id: user.id, 
+      email: user.email, 
+      role: user.role 
+    },
+    process.env.JWT_SECRET as string,
+    { expiresIn: '7d' }
+  );
 }; 

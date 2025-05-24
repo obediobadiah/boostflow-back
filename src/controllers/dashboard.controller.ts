@@ -116,7 +116,7 @@ export const getActiveProducts = async (req: Request, res: Response) => {
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'name', 'email', 'role']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
         }
       ],
       offset,
@@ -212,7 +212,7 @@ export const getActivePromotions = async (req: Request, res: Response) => {
         {
           model: User,
           as: 'promoter',
-          attributes: ['id', 'name', 'email', 'role']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
         }
       ],
       offset,

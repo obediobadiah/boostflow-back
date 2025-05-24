@@ -28,14 +28,14 @@ router.get('/', authenticate, (async (req, res) => {
                             {
                                 model: models_1.User,
                                 as: 'owner',
-                                attributes: ['id', 'name', 'email']
+                                attributes: ['id', 'firstName', 'lastName', 'email']
                             }
                         ]
                     },
                     {
                         model: models_1.User,
                         as: 'promoter',
-                        attributes: ['id', 'name', 'email', 'role']
+                        attributes: ['id', 'firstName', 'lastName', 'email', 'role']
                     }
                 ],
                 order: [['createdAt', 'DESC']]
@@ -57,14 +57,14 @@ router.get('/', authenticate, (async (req, res) => {
                         {
                             model: models_1.User,
                             as: 'owner',
-                            attributes: ['id', 'name', 'email']
+                            attributes: ['id', 'firstName', 'lastName', 'email']
                         }
                     ]
                 },
                 {
                     model: models_1.User,
                     as: 'promoter',
-                    attributes: ['id', 'name', 'email', 'role']
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'role']
                 }
             ],
             order: [['createdAt', 'DESC']]
@@ -172,7 +172,7 @@ router.get('/:id', authenticate, (async (req, res) => {
                         {
                             model: models_1.User,
                             as: 'owner',
-                            attributes: ['id', 'name', 'email']
+                            attributes: ['id', 'firstName', 'lastName', 'email']
                         }
                     ]
                 }
@@ -222,7 +222,7 @@ router.put('/:id', authenticate, (async (req, res) => {
                         {
                             model: models_1.User,
                             as: 'owner',
-                            attributes: ['id', 'name', 'email']
+                            attributes: ['id', 'firstName', 'lastName', 'email']
                         }
                     ]
                 }

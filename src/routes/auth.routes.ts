@@ -24,11 +24,13 @@ router.use(cors({
 
 // Validation middleware
 const validateRegister = [
-  body('name').notEmpty().withMessage('Name is required'),
+  body('firstName').notEmpty().withMessage('First name is required'),
+  body('lastName').notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
+  body('website').optional().isURL().withMessage('Website must be a valid URL'),
 ];
 
 const validateLogin = [
@@ -49,7 +51,8 @@ const generateToken = (user: any) => {
 const getUserData = (user: any) => {
   return {
     id: user.id,
-    name: user.name,
+    firstName: user.firstName,
+    lastName: user.lastName,
     email: user.email,
     role: user.role,
     active: user.active,
@@ -78,7 +81,7 @@ router.post(
         return;
       }
 
-      const { name, email, password, role } = req.body;
+      const { firstName, lastName, email, password, phone, company, website, bio, role } = req.body;
 
       // Check if user already exists
       const existingUser = await User.findOne({ where: { email } });
@@ -89,9 +92,14 @@ router.post(
 
       // Create new user
       const user = await User.create({
-        name,
+        firstName,
+        lastName,
         email,
         password, // Password will be hashed by the model hook
+        phone,
+        company,
+        website,
+        bio,
         role: role || 'business',
       });
 
@@ -101,7 +109,17 @@ router.post(
       res.status(201).json({
         message: 'User registered successfully',
         token,
-        user: getUserData(user),
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          company: user.company,
+          website: user.website,
+          bio: user.bio,
+          role: user.role,
+        },
       });
     } catch (error) {
       next(error);
