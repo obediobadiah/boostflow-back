@@ -14,16 +14,14 @@ interface Request extends ExpressRequest {
 // Get product statistics
 export const getProductStatistics = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
-    const userRole = (req.user as any).role;
-    // Simplified to avoid database errors
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
 
     let totalProducts = 0;
 
     if (userRole === 'admin') {
       totalProducts = await Product.count();
     } else {
-
       totalProducts = await Product.count({
         where: {
           active: true
@@ -32,8 +30,7 @@ export const getProductStatistics = async (req: Request, res: Response) => {
     }
 
     res.status(200).json({
-      totalProducts: totalProducts,
-      change: '+25%'
+      totalProducts
     });
   } catch (error: any) {
     console.error('Error fetching product statistics:', error);
@@ -47,9 +44,8 @@ export const getProductStatistics = async (req: Request, res: Response) => {
 // Get promotion statistics
 export const getPromotionStatistics = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
+    const userId = req.user?.id;
 
-    // Simplified to avoid aggregation errors
     const promotions = await Promotion.findAll({
       where: {
         promoterId: userId
@@ -71,13 +67,7 @@ export const getPromotionStatistics = async (req: Request, res: Response) => {
       totalPromotions: promotions.length,
       clicksGenerated,
       earnings,
-      conversions,
-      change: {
-        promotions: '+15%',
-        clicks: '+22%',
-        earnings: '+18%',
-        conversions: '+10%'
-      }
+      conversions
     });
   } catch (error: any) {
     console.error('Error fetching promotion statistics:', error);
@@ -87,11 +77,12 @@ export const getPromotionStatistics = async (req: Request, res: Response) => {
     });
   }
 };
+
 // Get active products with pagination
 export const getActiveProducts = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
-    const userRole = (req.user as any).role;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
 
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 5;
@@ -130,10 +121,13 @@ export const getActiveProducts = async (req: Request, res: Response) => {
     const formattedProducts = products.map((product: any) => {
       const owner = product.owner;
 
-      // Format the owner name - if it's an admin, use 'Admin'
-      let ownerName = owner?.name || 'Unknown';
-      if (owner?.role === 'admin') {
-        ownerName = 'Admin';
+      // Format the owner name using firstName and lastName
+      let ownerName = 'Unknown';
+      if (owner) {
+        ownerName = `${owner.firstName || ''} ${owner.lastName || ''}`.trim();
+        if (owner.role === 'admin') {
+          ownerName = 'Admin';
+        }
       }
 
       return {
@@ -170,49 +164,40 @@ export const getActiveProducts = async (req: Request, res: Response) => {
 // Get active promotions with pagination
 export const getActivePromotions = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 5;
     const offset = (page - 1) * limit;
-    const userRole = (req.user as any).role;
 
     // Build the where condition based on user role
-    let whereCondition;
+    let whereCondition: { status: string, promoterId?: number } = { status: 'active' };
 
-    if (userRole === 'admin') {
-      // Admin can see all active promotions
-      whereCondition = { status: 'active' };
-    } else {
-      // Non-admin users can only see their own promotions and those created by admins
-      // First, find admin users to use in our query
-      const adminUsers = await User.findAll({
-        where: { role: 'admin' },
-        attributes: ['id']
-      });
-
-      const adminUserIds = adminUsers.map((admin: any) => admin.id);
-
+    if (userRole !== 'admin') {
       whereCondition = {
-        status: 'active',
-        [Op.or]: [
-          { promoterId: userId },  // The user's own promotions
-        ]
+        ...whereCondition,
+        promoterId: userId
       };
     }
 
-    // Fetch promotions with the appropriate filtering
     const { count, rows: promotions } = await Promotion.findAndCountAll({
       where: whereCondition,
       include: [
         {
           model: Product,
           as: 'product',
-          attributes: ['id', 'name', 'price', 'category']
+          include: [
+            {
+              model: User,
+              as: 'owner',
+              attributes: ['id', 'firstName', 'lastName', 'email']
+            }
+          ]
         },
         {
           model: User,
           as: 'promoter',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
+          attributes: ['id', 'firstName', 'lastName', 'email']
         }
       ],
       offset,
@@ -222,34 +207,8 @@ export const getActivePromotions = async (req: Request, res: Response) => {
 
     const totalPages = Math.ceil(count / limit);
 
-    // Transform data to match frontend expectations
-    const formattedPromotions = promotions.map((promotion: any) => {
-      const product = promotion.product;
-      const promoter = promotion.promoter;
-
-      // Format the promoter name - if it's an admin, append "(Admin)" to the name
-      let promoterName = promoter?.name || 'Unknown';
-      if (promoter?.role === 'admin') {
-        promoterName = 'Admin';
-      }
-
-      return {
-        id: promotion.id,
-        name: product ? product.name : 'Unknown Product',
-        commission: promotion.commissionType === 'percentage' ?
-          `${promotion.commissionRate || 0}% per sale` :
-          `$${promotion.commissionRate || 0} per sale`,
-        clicks: promotion.clicks || 0,
-        conversions: promotion.conversions || 0,
-        price: product ? `$${product.price || 0}` : 'N/A',
-        category: product ? product.category : 'N/A',
-        promoterId: promotion.promoterId,
-        promoterName: promoterName
-      };
-    });
-
     res.status(200).json({
-      data: formattedPromotions,
+      data: promotions,
       total: count,
       page,
       limit,
@@ -264,30 +223,24 @@ export const getActivePromotions = async (req: Request, res: Response) => {
   }
 };
 
-// Track a product view
+// Track product view
 export const trackProductView = async (req: Request, res: Response) => {
   try {
     const { productId } = req.body;
     const userId = req.user?.id;
 
-    // Check if product exists
-    const product = await Product.findByPk(productId);
-    if (!product) {
-      return res.status(404).json({
-        message: 'Product not found'
-      });
+    if (!productId) {
+      return res.status(400).json({ message: 'Product ID is required' });
     }
 
-    // Create product view record
+    // Record the product view
     await ProductView.create({
       productId,
       userId,
       timestamp: new Date()
     });
 
-    res.status(200).json({
-      message: 'Product view tracked successfully'
-    });
+    res.status(200).json({ message: 'Product view tracked successfully' });
   } catch (error: any) {
     console.error('Error tracking product view:', error);
     res.status(500).json({
@@ -297,125 +250,69 @@ export const trackProductView = async (req: Request, res: Response) => {
   }
 };
 
+// Get dashboard data
+export const getDashboardData = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    // Get user information
+    const user = await User.findByPk(userId);
+
+    // Get stats based on user role
+    if (userRole === 'business' || userRole === 'admin') {
+      // For business users, get product stats
+      const productStats = await getProductStatistics(req, {} as Response);
+      const activeProductsData = await getActiveProducts(req, {} as Response);
+
+      res.status(200).json({
+        user,
+        stats: {
+          products: productStats
+        },
+        recentProducts: activeProductsData
+      });
+    } else if (userRole === 'promoter') {
+      // For promoters, get promotion stats
+      const promotionStats = await getPromotionStatistics(req, {} as Response);
+      const activePromotionsData = await getActivePromotions(req, {} as Response);
+
+      res.status(200).json({
+        user,
+        stats: {
+          promotions: promotionStats
+        },
+        recentPromotions: activePromotionsData
+      });
+    } else {
+      res.status(403).json({ message: 'Unauthorized role' });
+    }
+  } catch (error: any) {
+    console.error('Error fetching dashboard data:', error);
+    res.status(500).json({
+      message: 'Error fetching dashboard data',
+      error: error.message
+    });
+  }
+};
+
 // Get monthly product statistics
 export const getMonthlyProductStatistics = async (req: Request, res: Response) => {
   try {
-    const { month, year } = req.query;
-
-    // Validate month and year
-    const monthNum = parseInt(month as string);
-    const yearNum = parseInt(year as string);
-
-    if (isNaN(monthNum) || isNaN(yearNum) || monthNum < 1 || monthNum > 12) {
-      return res.status(400).json({
-        message: 'Invalid month or year'
-      });
-    }
-
-    // Get start and end of month
-    const startDate = new Date(yearNum, monthNum - 1, 1);
-    const endDate = new Date(yearNum, monthNum, 0);
-
-    // Get total number of products created this month
-    const newProducts = await Product.count({
-      where: {
-        createdAt: {
-          [Op.between]: [startDate, endDate]
-        }
-      }
-    });
-
-    // Get total product views for this month
-    const totalViews = await ProductView.count({
-      where: {
-        timestamp: {
-          [Op.between]: [startDate, endDate]
-        }
-      }
-    });
-
-    // Get weekly breakdown of product views
-    const weeklyViews = await ProductView.findAll({
-      attributes: [
-        [Sequelize.literal("to_char(timestamp, 'IW')"), 'week'],
-        [Sequelize.fn('count', Sequelize.col('id')), 'count']
-      ],
-      where: {
-        timestamp: {
-          [Op.between]: [startDate, endDate]
-        }
-      },
-      group: ['week'],
-      order: [['week', 'ASC']]
-    });
-
-    // Calculate estimated revenue from all products viewed in the month
-    // This is a rough calculation based on product price and commission rate
-    const productViewsWithData = await ProductView.findAll({
-      attributes: ['productId'],
-      include: [{
-        model: Product,
-        as: 'product',
-        attributes: ['price', 'commissionRate', 'commissionType']
-      }],
-      where: {
-        timestamp: {
-          [Op.between]: [startDate, endDate]
-        }
-      }
-    });
-
-    let estimatedRevenue = 0;
-
-    productViewsWithData.forEach((view: any) => {
-      const product = view.product;
-      if (product) {
-        // Calculate based on commission type
-        if (product.commissionType === 'percentage') {
-          estimatedRevenue += (product.price * (product.commissionRate / 100));
-        } else {
-          estimatedRevenue += product.commissionRate;
-        }
-      }
-    });
-
-    // Get comparison with previous month
-    const prevMonthStartDate = new Date(yearNum, monthNum - 2, 1);
-    const prevMonthEndDate = new Date(yearNum, monthNum - 1, 0);
-
-    const prevMonthProducts = await Product.count({
-      where: {
-        createdAt: {
-          [Op.between]: [prevMonthStartDate, prevMonthEndDate]
-        }
-      }
-    });
-
-    const prevMonthViews = await ProductView.count({
-      where: {
-        timestamp: {
-          [Op.between]: [prevMonthStartDate, prevMonthEndDate]
-        }
-      }
-    });
-
-    // Calculate percentage changes
-    const productChange = prevMonthProducts === 0 ? 100 :
-      Math.round(((newProducts - prevMonthProducts) / prevMonthProducts) * 100);
-
-    const viewsChange = prevMonthViews === 0 ? 100 :
-      Math.round(((totalViews - prevMonthViews) / prevMonthViews) * 100);
-
-    res.status(200).json({
-      totalProducts: newProducts,
-      totalViews,
-      weeklyViews,
-      estimatedRevenue: parseFloat(estimatedRevenue.toFixed(2)),
-      change: {
-        products: `${productChange >= 0 ? '+' : ''}${productChange}%`,
-        views: `${viewsChange >= 0 ? '+' : ''}${viewsChange}%`,
-      }
-    });
+    const userId = req.user?.id;
+    
+    // Get current date
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+    
+    // Get data for the current month
+    const productStatsData = await getProductStatsByMonth(
+      { ...req, params: { year: currentYear.toString(), month: currentMonth.toString() } } as Request,
+      {} as Response
+    );
+    
+    res.status(200).json(productStatsData);
   } catch (error: any) {
     console.error('Error fetching monthly product statistics:', error);
     res.status(500).json({
@@ -425,104 +322,28 @@ export const getMonthlyProductStatistics = async (req: Request, res: Response) =
   }
 };
 
-// Get dashboard data
-export const getDashboardData = async (req: Request, res: Response) => {
-  try {
-    // Get counts from database
-    const totalProducts = await Product.count();
-    const activeProducts = await Product.count({ where: { active: true } });
-    const totalPromotions = await Promotion.count();
-    const activePromotions = await Promotion.count({ where: { status: 'active' } });
-
-    // Get list of active products (limit to 5)
-    const products = await Product.findAll({
-      where: { active: true },
-      order: [['createdAt', 'DESC']],
-      limit: 5
-    });
-
-    // Get list of active promotions (limit to 5)
-    const promotions = await Promotion.findAll({
-      where: { status: 'active' },
-      order: [['createdAt', 'DESC']],
-      limit: 5,
-      include: [
-        { model: Product, as: 'product', attributes: ['id', 'name', 'price'] }
-      ]
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        statistics: {
-          products: {
-            total: totalProducts,
-            active: activeProducts
-          },
-          promotions: {
-            total: totalPromotions,
-            active: activePromotions
-          }
-        },
-        activeProducts: products,
-        activePromotions: promotions
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch dashboard data',
-      error: (error as Error).message
-    });
-  }
-};
-
 // Get product statistics by month
 export const getProductStatsByMonth = async (req: Request, res: Response) => {
   try {
     const { year, month } = req.params;
-
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(month), 0);
-
-    // Get user ID and role for filtering
     const userId = req.user?.id;
-    const userRole = req.user?.role;
-
-    // Build the where condition based on user role
-    let productWhereCondition: any = {};
-
-    if (userRole === 'admin') {
-      // Admin can see all products
-      productWhereCondition = {};
-    } else {
-      // Non-admin users can only see their own products and those created by admins
-      // First, find admin users to use in our query
-      const adminUsers = await User.findAll({
-        where: { role: 'admin' },
-        attributes: ['id']
-      });
-
-      const adminUserIds = adminUsers.map((admin: any) => admin.id);
-
-      productWhereCondition = {
-        [Op.or]: [
-          { ownerId: userId },  // The user's own products
-          { ownerId: { [Op.in]: adminUserIds } }  // Admin-created products
-        ]
-      };
+    
+    // Validate year and month
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    
+    if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({ message: 'Invalid year or month' });
     }
-
-    // Get weekly view counts with product filtering
-    const weeklyStats = await ProductView.findAll({
-      attributes: [
-        [fn('date_trunc', 'week', col('ProductView.timestamp')), 'week'],
-        [fn('count', col('ProductView.id')), 'views'],
-        [fn('count', literal('DISTINCT "ProductView"."productId"')), 'uniqueProducts']
-      ],
+    
+    // Get the start and end date for the given month
+    const startDate = new Date(yearNum, monthNum - 1, 1);
+    const endDate = new Date(yearNum, monthNum, 0);
+    
+    // Get product view data
+    const productViews = await ProductView.findAll({
       where: {
-        '$ProductView.timestamp$': {
+        timestamp: {
           [Op.between]: [startDate, endDate]
         }
       },
@@ -530,424 +351,164 @@ export const getProductStatsByMonth = async (req: Request, res: Response) => {
         {
           model: Product,
           as: 'product',
-          where: productWhereCondition,
-          attributes: []  // No need to select product fields
-        }
-      ],
-      group: [fn('date_trunc', 'week', col('ProductView.timestamp'))],
-      order: [[fn('date_trunc', 'week', col('ProductView.timestamp')), 'ASC']]
-    });
-
-    // Calculate total views for current month with filtering
-    const totalMonthViews = await ProductView.count({
-      where: {
-        '$ProductView.timestamp$': {
-          [Op.between]: [startDate, endDate]
-        }
-      },
-      include: [
-        {
-          model: Product,
-          as: 'product',
-          where: productWhereCondition,
-          attributes: []
+          where: {
+            ownerId: userId
+          }
         }
       ]
     });
+    
+    // Organize data by week
+    const weeklyData: Record<number, { views: number }> = {};
+    
+    productViews.forEach((view: any) => {
+      const viewDate = new Date(view.timestamp);
+      const weekNumber = getWeekNumberInMonth(viewDate, startDate);
+      
+      if (!weeklyData[weekNumber]) {
+        weeklyData[weekNumber] = {
+          views: 0
+        };
+      }
+      
+      weeklyData[weekNumber].views += 1;
+    });
+    
+    // Convert to array format for frontend
+    const weeksInMonth = getWeeksInMonth(yearNum, monthNum - 1);
+    const result = [];
+    
+    for (let i = 1; i <= weeksInMonth; i++) {
+      result.push({
+        week: i,
+        views: weeklyData[i]?.views || 0
+      });
+    }
+    
+    return res.status(200).json({
+      year: yearNum,
+      month: monthNum,
+      data: result
+    });
+  } catch (error: any) {
+    console.error('Error fetching product statistics by month:', error);
+    return res.status(500).json({
+      message: 'Error fetching product statistics by month',
+      error: error.message
+    });
+  }
+};
 
-    // Calculate previous month stats for comparison with filtering
-    const prevStartDate = new Date(parseInt(year), parseInt(month) - 2, 1);
-    const prevEndDate = new Date(parseInt(year), parseInt(month) - 1, 0);
-
-    const prevMonthViews = await ProductView.count({
+// Get promotion statistics by month
+export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
+  try {
+    const { year, month } = req.params;
+    const userId = req.user?.id;
+    
+    // Validate year and month
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    
+    if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({ message: 'Invalid year or month' });
+    }
+    
+    // Get the start and end date for the given month
+    const startDate = new Date(yearNum, monthNum - 1, 1);
+    const endDate = new Date(yearNum, monthNum, 0);
+    
+    // Get promotion click data
+    const promotionClicks = await PromotionClick.findAll({
       where: {
-        '$ProductView.timestamp$': {
-          [Op.between]: [prevStartDate, prevEndDate]
+        timestamp: {
+          [Op.between]: [startDate, endDate]
         }
       },
       include: [
         {
-          model: Product,
-          as: 'product',
-          where: productWhereCondition,
-          attributes: []
+          model: Promotion,
+          as: 'promotion',
+          where: {
+            promoterId: userId
+          }
         }
       ]
     });
-
-    // Calculate previous month product creation count
-    const prevMonthProducts = await Product.count({
-      where: {
-        createdAt: {
-          [Op.between]: [prevStartDate, prevEndDate]
-        },
-        ...productWhereCondition
+    
+    // Organize data by week
+    const weeklyData: Record<number, { clicks: number, conversions: number }> = {};
+    
+    promotionClicks.forEach((click: any) => {
+      const clickDate = new Date(click.timestamp);
+      const weekNumber = getWeekNumberInMonth(clickDate, startDate);
+      
+      if (!weeklyData[weekNumber]) {
+        weeklyData[weekNumber] = {
+          clicks: 0,
+          conversions: 0
+        };
+      }
+      
+      weeklyData[weekNumber].clicks += 1;
+      if (click.isConversion) {
+        weeklyData[weekNumber].conversions += 1;
       }
     });
-
-    // Get weekly product creation counts with filtering
-    const weeklyProductCreation = await Product.findAll({
-      attributes: [
-        [fn('date_trunc', 'week', col('Product.createdAt')), 'week'],
-        [fn('count', col('Product.id')), 'count']
-      ],
-      where: {
-        createdAt: {
-          [Op.between]: [startDate, endDate]
-        },
-        ...productWhereCondition
-      },
-      group: [fn('date_trunc', 'week', col('Product.createdAt'))],
-      order: [[fn('date_trunc', 'week', col('Product.createdAt')), 'ASC']]
-    });
-
-    // Calculate total new products for current month with filtering
-    const totalNewProducts = await Product.count({
-      where: {
-        createdAt: {
-          [Op.between]: [startDate, endDate]
-        },
-        ...productWhereCondition
-      }
-    });
-
-    // Get average commission rate to estimate revenue (filtered by product access)
-    const avgCommissionResult = await Product.findOne({
-      attributes: [
-        [fn('AVG', col('commissionRate')), 'avgCommission']
-      ],
-      where: productWhereCondition,
-      raw: true
-    });
-
-    const avgCommissionRate = avgCommissionResult ?
-      parseFloat((avgCommissionResult as any).avgCommission) || 5 :
-      5;
-
-    // Determine the number of weeks in the month
-    const numWeeksInMonth = getWeeksInMonth(parseInt(year), parseInt(month) - 1);
-
-    // Create a map to store data for each week
-    const weekDataMap = new Map();
-
-    // Initialize with zero values for all weeks
-    for (let i = 1; i <= numWeeksInMonth; i++) {
-      weekDataMap.set(i, {
-        name: `Week ${i}`,
-        views: 0,
-        clicks: 0,
-        revenue: 0,
-        productsCreated: 0
+    
+    // Convert to array format for frontend
+    const weeksInMonth = getWeeksInMonth(yearNum, monthNum - 1);
+    const result = [];
+    
+    for (let i = 1; i <= weeksInMonth; i++) {
+      result.push({
+        week: i,
+        clicks: weeklyData[i]?.clicks || 0,
+        conversions: weeklyData[i]?.conversions || 0
       });
     }
-
-    // Create a map of week -> product counts for easier lookup
-    const weekToProductCountMap = new Map();
-    weeklyProductCreation.forEach((stat) => {
-      const weekDate = new Date(stat.get('week') as string);
-      const weekNumber = getWeekNumberInMonth(weekDate, startDate);
-      weekToProductCountMap.set(weekNumber, parseInt(stat.get('count') as string));
+    
+    return res.status(200).json({
+      year: yearNum,
+      month: monthNum,
+      data: result
     });
-
-    // Process weekly stats
-    weeklyStats.forEach(stat => {
-      const weekDate = new Date(stat.get('week') as string);
-      const weekNumber = getWeekNumberInMonth(weekDate, startDate);
-
-      if (weekNumber > 0 && weekNumber <= numWeeksInMonth) {
-        const views = parseInt(stat.get('views') as string);
-        // Estimate clicks as 60% of views and revenue based on commission rate
-        const clicks = Math.round(views * 0.6);
-        const revenue = Math.round(clicks * (avgCommissionRate / 100) * 25);
-        // Get the number of products created in this week (or 0 if none)
-        const productsCreated = weekToProductCountMap.get(weekNumber) || 0;
-
-        weekDataMap.set(weekNumber, {
-          name: `Week ${weekNumber}`,
-          views,
-          clicks,
-          revenue,
-          productsCreated
-        });
-      }
-    });
-
-    // Convert map to array for response
-    const weeklyData = Array.from(weekDataMap.values());
-
-    // Calculate percentage changes
-    const viewsPercentChange = prevMonthViews > 0
-      ? ((totalMonthViews - prevMonthViews) / prevMonthViews * 100).toFixed(2)
-      : '100';
-
-    const productsPercentChange = prevMonthProducts > 0
-      ? ((totalNewProducts - prevMonthProducts) / prevMonthProducts * 100).toFixed(2)
-      : '100';
-
-    res.status(200).json({
-      success: true,
-      data: {
-        weeklyData,
-        summary: {
-          totalViews: totalMonthViews,
-          totalNewProducts,
-          prevMonthViews,
-          prevMonthProducts,
-          viewsPercentChange,
-          productsPercentChange,
-          estimatedRevenue: Math.round(totalMonthViews * 0.6 * (avgCommissionRate / 100) * 25)
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching product statistics:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch product statistics',
-      error: (error as Error).message
+  } catch (error: any) {
+    console.error('Error fetching promotion statistics by month:', error);
+    return res.status(500).json({
+      message: 'Error fetching promotion statistics by month',
+      error: error.message
     });
   }
 };
 
 // Helper function to get the number of weeks in a month
 function getWeeksInMonth(year: number, month: number): number {
-  // Get the first day of the month
   const firstDay = new Date(year, month, 1);
-  // Get the last day of the month
   const lastDay = new Date(year, month + 1, 0);
-
-  // Get the first day of the first week
-  const firstDayOfFirstWeek = new Date(firstDay);
-  firstDayOfFirstWeek.setDate(firstDay.getDate() - firstDay.getDay());
-
-  // Get the last day of the last week
-  const lastDayOfLastWeek = new Date(lastDay);
-  lastDayOfLastWeek.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
-
-  // Calculate the difference in weeks
-  const diffInTime = lastDayOfLastWeek.getTime() - firstDayOfFirstWeek.getTime();
-  const diffInDays = diffInTime / (1000 * 3600 * 24);
-  return Math.ceil((diffInDays + 1) / 7);
+  
+  // Calculate the number of weeks
+  const firstWeek = getWeekNumberInYear(firstDay);
+  const lastWeek = getWeekNumberInYear(lastDay);
+  
+  return lastWeek - firstWeek + 1;
 }
 
-// Helper function to get the week number within a month
+// Helper function to get the week number in a year
+function getWeekNumberInYear(date: Date): number {
+  const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+  const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+}
+
+// Helper function to get the week number in a month
 function getWeekNumberInMonth(date: Date, monthStart: Date): number {
-  // Clone the dates to avoid modifying the originals
-  const dateClone = new Date(date);
-  const monthStartClone = new Date(monthStart);
-
-  // Set both dates to the beginning of their respective weeks (Sunday)
-  dateClone.setDate(dateClone.getDate() - dateClone.getDay());
-  monthStartClone.setDate(monthStartClone.getDate() - monthStartClone.getDay());
-
-  // Calculate the difference in weeks
-  const diffInTime = dateClone.getTime() - monthStartClone.getTime();
-  const diffInDays = diffInTime / (1000 * 3600 * 24);
-  return Math.floor(diffInDays / 7) + 1;
+  const firstDay = new Date(monthStart);
+  const dayOfMonth = date.getDate();
+  const dayOfWeek = date.getDay();
+  
+  // Calculate the first day of the first week
+  const firstDayOfFirstWeek = firstDay.getDate() - firstDay.getDay();
+  
+  // Calculate the week number
+  return Math.ceil((dayOfMonth - firstDayOfFirstWeek) / 7);
 }
-
-// Get promotion statistics by month
-export const getPromotionStatsByMonth = async (req: Request, res: Response) => {
-  try {
-    const { year, month } = req.params;
-
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(month), 0);
-
-    // Get the user ID and role for filtering promotions
-    const userId = req.user?.id;
-    const userRole = req.user?.role;
-
-    // Build the where condition based on user role
-    let promotionFilterClause = '';
-    let adminUserIds: number[] = [];
-
-    if (userRole === 'admin') {
-      // Admin can see all promotions
-      promotionFilterClause = '';
-    } else {
-      // Non-admin users can only see their own promotions and those created by admins
-      // First, find admin users to use in our query
-      const adminUsers = await User.findAll({
-        where: { role: 'admin' },
-        attributes: ['id']
-      });
-
-      adminUserIds = adminUsers.map((admin: any) => admin.id);
-
-      // Create the filter clause for the SQL query
-      promotionFilterClause = ` AND (p."promoterId" = :userId OR p."promoterId" IN (:adminUserIds))`;
-    }
-
-    // Use raw query to count promotions created per week and sum estimated earnings
-    let weeklyStatsQuery = `
-      SELECT 
-        date_trunc('week', p."createdAt") as week,
-        COUNT(p."id") as promotions_created,
-        SUM(p."earnings") as estimated_earnings
-      FROM 
-        promotions as p
-      WHERE 
-        p."createdAt" BETWEEN :startDate AND :endDate
-        ${promotionFilterClause}
-      GROUP BY 
-        date_trunc('week', p."createdAt")
-      ORDER BY 
-        date_trunc('week', p."createdAt") ASC
-    `;
-
-    // Execute the query
-    const [weeklyStatsResults] = await sequelize.query(weeklyStatsQuery, {
-      replacements: {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        userId: userId,
-        adminUserIds: adminUserIds
-      },
-      type: 'SELECT',
-      raw: true
-    }) as [any[], any];
-
-    // Build total stats query
-    let totalStatsQuery = `
-      SELECT 
-        COUNT(p."id") as "totalPromotions",
-        SUM(p."earnings") as "totalEstimatedEarnings"
-      FROM 
-        promotions as p
-      WHERE 
-        p."createdAt" BETWEEN :startDate AND :endDate
-        ${promotionFilterClause}
-    `;
-
-    // Execute the query
-    const [totalStats] = await sequelize.query(totalStatsQuery, {
-      replacements: {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        userId: userId,
-        adminUserIds: adminUserIds
-      },
-      type: 'SELECT',
-      raw: true
-    }) as [any, any];
-
-    // Build previous month stats query
-    const prevStartDate = new Date(parseInt(year), parseInt(month) - 2, 1);
-    const prevEndDate = new Date(parseInt(year), parseInt(month) - 1, 0);
-
-    let prevMonthQuery = `
-      SELECT 
-        COUNT(p."id") as promotions,
-        SUM(p."earnings") as earnings
-      FROM 
-        promotions as p
-      WHERE 
-        p."createdAt" BETWEEN :startDate AND :endDate
-        ${promotionFilterClause}
-    `;
-
-    // Execute the query
-    const [prevMonthStats] = await sequelize.query(prevMonthQuery, {
-      replacements: {
-        startDate: prevStartDate.toISOString(),
-        endDate: prevEndDate.toISOString(),
-        userId: userId,
-        adminUserIds: adminUserIds
-      },
-      type: 'SELECT',
-      raw: true
-    }) as [any, any];
-
-    // If no data found, provide empty data and show zero stats
-    if (!weeklyStatsResults || !Array.isArray(weeklyStatsResults) || weeklyStatsResults.length === 0) {
-      // Calculate number of weeks in the month
-      const numWeeksInMonth = getWeeksInMonth(parseInt(year), parseInt(month) - 1);
-      const weeklyData = [];
-
-      for (let i = 1; i <= numWeeksInMonth; i++) {
-        weeklyData.push({
-          name: `Week ${i}`,
-          promotions: 0,
-          earnings: 0
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: {
-          weeklyData,
-          summary: {
-            totalPromotions: 0,
-            totalEstimatedEarnings: 0,
-            prevMonthPromotions: 0,
-            prevMonthEarnings: 0,
-            promotionsPercentChange: '0',
-            earningsPercentChange: '0'
-          }
-        }
-      });
-    }
-
-    // Format data for chart
-    const weeklyData = [];
-    const numWeeksInMonth = getWeeksInMonth(parseInt(year), parseInt(month) - 1);
-
-    // Initialize weeklyData with zeros for all weeks
-    for (let i = 1; i <= numWeeksInMonth; i++) {
-      weeklyData.push({
-        name: `Week ${i}`,
-        promotions: 0,
-        earnings: 0
-      });
-    }
-
-    // Fill in actual data where available
-    weeklyStatsResults.forEach((stat: any) => {
-      const weekDate = new Date(stat.week);
-      const weekNumber = getWeekNumberInMonth(weekDate, startDate);
-
-      if (weekNumber > 0 && weekNumber <= numWeeksInMonth) {
-        const promotions = parseInt(stat.promotions_created) || 0;
-        const earnings = parseFloat(stat.estimated_earnings) || 0;
-
-        weeklyData[weekNumber - 1] = {
-          name: `Week ${weekNumber}`,
-          promotions,
-          earnings
-        };
-      }
-    });
-
-    // Calculate percentage changes
-    const promotionsPercentChange = prevMonthStats.promotions > 0
-      ? ((totalStats.totalPromotions - prevMonthStats.promotions) / prevMonthStats.promotions * 100).toFixed(2)
-      : '100';
-
-    const earningsPercentChange = prevMonthStats.earnings > 0
-      ? ((totalStats.totalEstimatedEarnings - prevMonthStats.earnings) / prevMonthStats.earnings * 100).toFixed(2)
-      : '100';
-
-    res.status(200).json({
-      success: true,
-      data: {
-        weeklyData,
-        summary: {
-          totalPromotions: totalStats.totalPromotions,
-          totalEstimatedEarnings: totalStats.totalEstimatedEarnings,
-          prevMonthPromotions: prevMonthStats.promotions,
-          prevMonthEarnings: prevMonthStats.earnings,
-          promotionsPercentChange,
-          earningsPercentChange
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching promotion statistics:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch promotion statistics',
-      error: (error as Error).message
-    });
-  }
-};
