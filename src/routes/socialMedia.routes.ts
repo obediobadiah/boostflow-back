@@ -27,21 +27,21 @@ const validateSocialMediaAccount = [
 ];
 
 // Get all social media accounts for the authenticated user
-router.get('/my', authenticate, getSocialMediaAccounts);
+router.get('/my', authenticate, getSocialMediaAccounts as any);
 
 // Get a specific social media account by ID
-router.get('/:id', authenticate, getSocialMediaAccount);
+router.get('/:id', authenticate, getSocialMediaAccount as any);
 
 // Create a new social media account
-router.post('/', authenticate, validateSocialMediaAccount, createSocialMediaAccount);
+router.post('/', authenticate, validateSocialMediaAccount, createSocialMediaAccount as any);
 
 // Update a social media account
-router.put('/:id', authenticate, validateSocialMediaAccount, updateSocialMediaAccount);
+router.put('/:id', authenticate, validateSocialMediaAccount, updateSocialMediaAccount as any);
 
 // Disconnect a social media account
-router.put('/:id/disconnect', authenticate, disconnectSocialMediaAccount);
+router.put('/:id/disconnect', authenticate, disconnectSocialMediaAccount as any);
 
 // Delete a social media account
-router.delete('/:id', authenticate, deleteSocialMediaAccount);
+router.delete('/:id', authenticate, deleteSocialMediaAccount as any);
 
 export default router; 
