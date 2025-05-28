@@ -10,6 +10,8 @@ interface JwtPayload {
 interface AuthenticatedRequest extends ExpressRequest {
   user?: {
     id: number;
+    firstName: string;
+    email: string;
   };
 }
 
@@ -49,7 +51,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         return;
       }
 
-      req.user = { id: user.id };
+      req.user = { id: user.id, firstName: user.firstName, email: user.email };
       next();
     } catch (jwtError: any) {
       res.status(401).json({ 
