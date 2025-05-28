@@ -9,6 +9,16 @@ if (!fs.existsSync('scripts')) {
 
 console.log('Starting build process...');
 
+// Ensure pg is installed
+try {
+  console.log('Ensuring pg package is installed...');
+  execSync('npm list pg || npm install pg --save', { stdio: 'inherit' });
+  console.log('pg package is installed');
+} catch (error) {
+  console.error('Error ensuring pg package:', error);
+  // Continue anyway
+}
+
 try {
   // Try to compile with TypeScript
   console.log('Attempting TypeScript compilation...');
@@ -53,6 +63,12 @@ try {
   if (fs.existsSync('dist')) {
     console.log('Using existing JS files from previous build...');
   }
+}
+
+// Copy the vercel package.json to ensure all dependencies are included
+if (fs.existsSync('package.vercel.json')) {
+  console.log('Copying package.vercel.json to dist/package.json for deployment...');
+  fs.copyFileSync('package.vercel.json', 'dist/package.json');
 }
 
 console.log('Build process completed!'); 
