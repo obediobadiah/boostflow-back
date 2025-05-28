@@ -6,6 +6,8 @@ dotenv.config();
 
 // Extract database configuration from environment variables
 const {
+  DATABASE_URL,
+  POSTGRES_URL,
   DB_NAME = 'boostflow',
   DB_USER = 'obediobadiah',
   DB_PASSWORD = '',
@@ -14,24 +16,52 @@ const {
   NODE_ENV = 'development'
 } = process.env;
 
-// Create Sequelize instance
-const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
-  host: DB_HOST,
-  port: parseInt(DB_PORT, 10),
-  dialect: 'postgres',
-  logging: NODE_ENV === 'development' ? console.log : false,
-  dialectOptions: {
-    // Try to connect without a password using peer authentication 
-    // if password is empty (common on local development setups)
-    ...(DB_PASSWORD === '' ? { ssl: false } : {})
-  },
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
-  }
-});
+// Use DATABASE_URL if available (Neon serverless connection), otherwise use traditional config
+let sequelize: Sequelize;
+
+if (DATABASE_URL || POSTGRES_URL) {
+  // Use the connection string provided by Vercel/Neon
+  const connectionString = DATABASE_URL || POSTGRES_URL;
+  console.log('Using database connection string');
+  
+  sequelize = new Sequelize(connectionString as string, {
+    dialect: 'postgres',
+    logging: NODE_ENV === 'development' ? console.log : false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    },
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  });
+} else {
+  // Use traditional configuration for local development
+  console.log('Using traditional database configuration');
+  
+  sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
+    host: DB_HOST,
+    port: parseInt(DB_PORT, 10),
+    dialect: 'postgres',
+    logging: NODE_ENV === 'development' ? console.log : false,
+    dialectOptions: {
+      // Try to connect without a password using peer authentication 
+      // if password is empty (common on local development setups)
+      ...(DB_PASSWORD === '' ? { ssl: false } : {})
+    },
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  });
+}
 
 // Function to test database connection
 export const testConnection = async (): Promise<void> => {
