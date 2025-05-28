@@ -1,5 +1,6 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
+import pg from 'pg'; // Import pg module directly
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,7 @@ if (DATABASE_URL || POSTGRES_URL) {
   
   sequelize = new Sequelize(connectionString as string, {
     dialect: 'postgres',
+    dialectModule: pg, // Explicitly provide the pg module to Sequelize
     logging: NODE_ENV === 'development' ? console.log : false,
     dialectOptions: {
       ssl: {
@@ -48,6 +50,7 @@ if (DATABASE_URL || POSTGRES_URL) {
     host: DB_HOST,
     port: parseInt(DB_PORT, 10),
     dialect: 'postgres',
+    dialectModule: pg, // Explicitly provide the pg module to Sequelize
     logging: NODE_ENV === 'development' ? console.log : false,
     dialectOptions: {
       // Try to connect without a password using peer authentication 
