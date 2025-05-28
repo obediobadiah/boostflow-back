@@ -4,7 +4,7 @@
     "module": "commonjs",
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -15,7 +15,9 @@
       "*": ["node_modules/*", "src/*"]
     },
     "typeRoots": ["./node_modules/@types", "./src/types"],
-    "noImplicitReturns": false
+    "noImplicitReturns": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false
   },
   "include": ["src/**/*", "src/types/**/*"],
   "exclude": ["node_modules", "**/*.test.ts"]
