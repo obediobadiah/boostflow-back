@@ -1,17 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.js"
-    }
-  ],
   "env": {
     "NODE_ENV": "production"
   },
@@ -22,6 +10,12 @@
       "config": {
         "includeFiles": ["dist/**"]
       }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.js"
     }
   ]
 } 
