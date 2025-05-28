@@ -14,7 +14,8 @@ interface UserIdRequest extends Request {
 
 interface UserProfileRequest extends Request {
   body: {
-    name?: string;
+    firstName?: string;
+    lastName?: string;
     email?: string;
     profilePicture?: string;
   };
@@ -63,7 +64,7 @@ export const getUserById = async (req: UserIdRequest, res: Response) => {
 export const updateProfile = async (req: UserProfileRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { name, email, profilePicture } = req.body;
+    const { firstName, lastName, email, profilePicture } = req.body;
     
     // Check if email is already taken by another user
     if (email) {
@@ -90,7 +91,8 @@ export const updateProfile = async (req: UserProfileRequest, res: Response) => {
     }
     
     await user.update({
-      name,
+      firstName,
+      lastName,
       email,
       profilePicture
     });
