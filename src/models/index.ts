@@ -93,10 +93,11 @@ export const initDatabase = async () => {
       END $$;
     `);
 
-    // Then sync models with database - only alter tables, never drop
+    // Then sync models with database
+    // In production, use {force: false, alter: true} to update tables without dropping them
     await sequelize.sync({ 
-      alter: true,    // Alter tables to match models
-      force: false    // Never force recreate tables
+      force: false,    // Never force recreate tables
+      alter: true      // Allow Sequelize to alter tables in all environments
     });
     console.log('Database models synchronized successfully');
   } catch (error) {
