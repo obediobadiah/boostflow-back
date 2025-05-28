@@ -7,7 +7,7 @@ exports.getEarningsByPromotion = exports.updateEarningsStatus = exports.createEa
 const earnings_model_1 = require("../models/earnings.model");
 const promotion_model_1 = __importDefault(require("../models/promotion.model"));
 const sequelize_1 = require("sequelize");
-const models_1 = require("models");
+const models_1 = require("../models");
 // Get user's earnings
 const getUserEarnings = async (req, res) => {
     try {

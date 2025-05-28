@@ -3,7 +3,7 @@ import { Earnings } from '../models/earnings.model';
 import Promotion from '../models/promotion.model';
 import { calculateEarnings } from '../utils/helpers';
 import { Op } from 'sequelize';
-import { sequelize } from 'models';
+import { sequelize } from '../models';
 
 interface Request extends ExpressRequest {
   user?: any;
