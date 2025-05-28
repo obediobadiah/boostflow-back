@@ -2,17 +2,14 @@ import { Response, NextFunction } from 'express';
 import { Request as ExpressRequest } from 'express-serve-static-core';
 import jwt from 'jsonwebtoken';
 import { User } from '../models';
+import { UserAttributes } from '../models/user.model';
 
 interface JwtPayload {
   id: number;
 }
 
 interface AuthenticatedRequest extends ExpressRequest {
-  user?: {
-    id: number;
-    firstName: string;
-    email: string;
-  };
+  user?: Partial<UserAttributes>;
 }
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -51,7 +48,13 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         return;
       }
 
-      req.user = { id: user.id, firstName: user.firstName, email: user.email };
+      req.user = {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role
+      };
       next();
     } catch (jwtError: any) {
       res.status(401).json({ 
