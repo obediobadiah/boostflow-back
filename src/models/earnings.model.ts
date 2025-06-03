@@ -48,7 +48,7 @@ Earnings.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id',
       },
     },
@@ -56,7 +56,7 @@ Earnings.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Promotions',
+        model: 'promotions',
         key: 'id',
       },
     },
@@ -93,15 +93,6 @@ Earnings.init(
   }
 );
 
-// Define relationships
-Earnings.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user',
-});
-
-Earnings.belongsTo(Promotion, {
-  foreignKey: 'promotionId',
-  as: 'promotion',
-});
+// Association definitions moved to models/index.ts
 
 export default Earnings; 

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authenticateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const models_1 = require("../models");
+// @ts-ignore - Ignoring TypeScript errors for this file
 const authenticateToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -33,7 +34,14 @@ const authenticateToken = async (req, res, next) => {
                 res.status(401).json({ message: 'Authentication failed: User not found' });
                 return;
             }
-            req.user = { id: user.id };
+            // Set user object on request
+            req.user = {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role
+            };
             next();
         }
         catch (jwtError) {

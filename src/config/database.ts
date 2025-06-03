@@ -1,11 +1,11 @@
-import { Sequelize } from 'sequelize';
+import { Sequelize, Options, Dialect } from 'sequelize';
 import dotenv from 'dotenv';
 import pg from 'pg'; // Import pg module directly
 
-// Load environment variables
+// Load environment variables from .env
 dotenv.config();
 
-// Extract database configuration from environment variables
+// Destructure environment variables
 const {
   DATABASE_URL,
   POSTGRES_URL,
@@ -17,52 +17,46 @@ const {
   NODE_ENV = 'development'
 } = process.env;
 
-// Use DATABASE_URL if available (Neon serverless connection), otherwise use traditional config
-let sequelize: Sequelize;
+const isProduction = NODE_ENV === 'production';
 
-if (DATABASE_URL || POSTGRES_URL) {
-  // Use the connection string provided by Vercel/Neon
-  const connectionString = DATABASE_URL || POSTGRES_URL;
-  console.log('Using database connection string');
-  
-  sequelize = new Sequelize(connectionString as string, {
-    dialect: 'postgres',
-    dialectModule: pg, // Explicitly provide the pg module to Sequelize
-    logging: NODE_ENV === 'development' ? console.log : false,
+// Shared Sequelize options
+const commonSequelizeOptions: Options = {
+  dialect: 'postgres' as Dialect,
+  dialectModule: pg,
+  logging: NODE_ENV === 'development' ? console.log : false,
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  ...(isProduction ? {
     dialectOptions: {
       ssl: {
         require: true,
         rejectUnauthorized: false
       }
-    },
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
     }
-  });
-} else {
-  // Use traditional configuration for local development
-  console.log('Using traditional database configuration');
-  
-  sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
-    host: DB_HOST,
-    port: parseInt(DB_PORT, 10),
-    dialect: 'postgres',
-    dialectModule: pg, // Explicitly provide the pg module to Sequelize
-    logging: NODE_ENV === 'development' ? console.log : false,
+  } : {
     dialectOptions: {
-      // Try to connect without a password using peer authentication 
-      // if password is empty (common on local development setups)
-      ...(DB_PASSWORD === '' ? { ssl: false } : {})
-    },
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
+      ssl: false
     }
+  })
+};
+
+// Sequelize instance
+let sequelize: Sequelize;
+
+if (DATABASE_URL || POSTGRES_URL) {
+  const connectionString = DATABASE_URL || POSTGRES_URL;
+  console.log('Using database connection string');
+  sequelize = new Sequelize(connectionString as string, commonSequelizeOptions);
+} else {
+  console.log('Using traditional database configuration');
+  sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
+    ...commonSequelizeOptions,
+    host: DB_HOST,
+    port: parseInt(DB_PORT, 10)
   });
 }
 
@@ -70,28 +64,27 @@ if (DATABASE_URL || POSTGRES_URL) {
 export const testConnection = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
+    console.log('✅ Database connection has been established successfully.');
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('❌ Unable to connect to the database:', error);
     throw error;
   }
 };
 
-// Initialize the database connection
+// Function to initialize database and sync models
 export const initializeDatabase = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
-    // Database connection has been established successfully
-    
-    // Sync models with database
-    if (process.env.NODE_ENV !== 'production') {
-      await sequelize.sync({ alter: false }); // Set alter to false to avoid constraint issues
+    console.log('✅ Database authenticated successfully.');
+
+    if (!isProduction) {
+      await sequelize.sync({ alter: false }); // adjust if needed
+      console.log('✅ Models synced to database.');
     }
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('❌ Failed to initialize database:', error);
     throw error;
   }
 };
 
-// Export the sequelize instance directly
-export default sequelize; 
+export default sequelize;

@@ -19,9 +19,7 @@ module.exports = {
     port: DB_PORT,
     dialect: "postgres",
     dialectOptions: {
-      // Try to connect without a password using peer authentication 
-      // if password is empty (common on local development setups)
-      ...(DB_PASSWORD === '' ? { ssl: false } : {})
+      ssl: false
     }
   },
   test: {
@@ -29,7 +27,10 @@ module.exports = {
     password: DB_PASSWORD,
     database: `${DB_NAME}_test`,
     host: DB_HOST,
-    dialect: "postgres"
+    dialect: "postgres",
+    dialectOptions: {
+      ssl: false
+    }
   },
   production: {
     username: DB_USER,

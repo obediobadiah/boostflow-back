@@ -6,8 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Earnings = void 0;
 const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../config/database"));
-const user_model_1 = __importDefault(require("./user.model"));
-const promotion_model_1 = __importDefault(require("./promotion.model"));
 class Earnings extends sequelize_1.Model {
 }
 exports.Earnings = Earnings;
@@ -21,7 +19,7 @@ Earnings.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'Users',
+            model: 'users',
             key: 'id',
         },
     },
@@ -29,7 +27,7 @@ Earnings.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'Promotions',
+            model: 'promotions',
             key: 'id',
         },
     },
@@ -63,13 +61,5 @@ Earnings.init({
     tableName: 'earnings',
     timestamps: true,
 });
-// Define relationships
-Earnings.belongsTo(user_model_1.default, {
-    foreignKey: 'userId',
-    as: 'user',
-});
-Earnings.belongsTo(promotion_model_1.default, {
-    foreignKey: 'promotionId',
-    as: 'promotion',
-});
+// Association definitions moved to models/index.ts
 exports.default = Earnings;

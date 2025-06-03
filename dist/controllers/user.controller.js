@@ -39,7 +39,7 @@ exports.getUserById = getUserById;
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user?.id;
-        const { name, email, profilePicture } = req.body;
+        const { firstName, lastName, email, profilePicture } = req.body;
         // Check if email is already taken by another user
         if (email) {
             const existingUser = await models_1.User.findOne({
@@ -61,7 +61,8 @@ const updateProfile = async (req, res) => {
             });
         }
         await user.update({
-            name,
+            firstName,
+            lastName,
             email,
             profilePicture
         });

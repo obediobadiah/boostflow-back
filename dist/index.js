@@ -31,15 +31,23 @@ app_1.default.get('/', (req, res) => {
         version: '1.0.0',
     });
 });
-// Start server
-const PORT = process.env.PORT || 5001;
-app_1.default.listen(PORT, async () => {
-    // Initialize database connection
+// Initialize database
+(async () => {
     try {
         await (0, models_1.initDatabase)();
-        console.log(`Server running on port ${PORT}`);
+        console.log('Database initialized successfully');
     }
     catch (error) {
         console.error('Database initialization failed:', error);
     }
-});
+})();
+// Start server if not being imported (for local development)
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5001;
+    app_1.default.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+// Export the Express app for serverless environments
+exports.default = app_1.default;
+module.exports = app_1.default;

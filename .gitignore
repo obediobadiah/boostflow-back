@@ -69,3 +69,5 @@ src/seeders/*
 
 # migrations
 src/migrations/*
+/src/generated/prisma
+.vercel
