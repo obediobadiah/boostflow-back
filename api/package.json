@@ -1,8 +1,0 @@
-{
-  "name": "boostflow-api",
-  "version": "1.0.0",
-  "main": "index.js",
-  "dependencies": {
-    "pg": "^8.14.1"
-  }
-} 
