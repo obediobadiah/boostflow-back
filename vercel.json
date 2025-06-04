@@ -8,7 +8,7 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dist/**"]
+        "includeFiles": ["dist/**", "package.json"]
       }
     }
   ],
@@ -18,4 +18,4 @@
       "dest": "/api/index.js"
     }
   ]
-} 
+}
