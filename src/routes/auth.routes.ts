@@ -18,7 +18,7 @@ const router = express.Router();
 
 // Enable CORS for all routes
 router.use(cors({
-  origin: 'http://localhost:3000', // Updated to match frontend port
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'],
   credentials: true // Allow credentials (cookies, authorization headers, etc.)
 }));
 
@@ -180,8 +180,8 @@ router.get(
     // Log the redirect and token information
     console.log('Google authentication successful, redirecting to frontend with token');
     
-    // Use a hardcoded URL with port 3000
-    const redirectUrl = `http://localhost:3000/auth/callback?token=${token}`;
+    const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'];
+    const redirectUrl = allowedOrigins.includes('*') ? `http://localhost:3000/auth/callback?token=${token}` : `http://${allowedOrigins[0]}/auth/callback?token=${token}`;
     console.log('Redirecting to:', redirectUrl);
     
     // Redirect to frontend with token

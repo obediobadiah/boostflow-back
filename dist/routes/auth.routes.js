@@ -12,7 +12,7 @@ const cors_1 = __importDefault(require("cors"));
 const router = express_1.default.Router();
 // Enable CORS for all routes
 router.use((0, cors_1.default)({
-    origin: 'http://localhost:3000', // Updated to match frontend port
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'],
     credentials: true // Allow credentials (cookies, authorization headers, etc.)
 }));
 // Validation middleware
@@ -143,8 +143,8 @@ router.get('/google/callback', passport_1.default.authenticate('google', { sessi
     const token = generateToken(user);
     // Log the redirect and token information
     console.log('Google authentication successful, redirecting to frontend with token');
-    // Use a hardcoded URL with port 3000
-    const redirectUrl = `http://localhost:3000/auth/callback?token=${token}`;
+    const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'];
+    const redirectUrl = allowedOrigins.includes('*') ? `http://localhost:3000/auth/callback?token=${token}` : `http://${allowedOrigins[0]}/auth/callback?token=${token}`;
     console.log('Redirecting to:', redirectUrl);
     // Redirect to frontend with token
     res.redirect(redirectUrl);

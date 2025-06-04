@@ -17,7 +17,7 @@ dotenv_1.default.config();
 app_1.default.use((0, helmet_1.default)());
 app_1.default.use((0, morgan_1.default)('dev'));
 app_1.default.use((0, cors_1.default)({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'https://boostflow.vercel.app'], // Allow requests from any origin for development
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'], // Allow requests from any origin for development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
