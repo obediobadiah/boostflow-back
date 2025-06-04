@@ -65,10 +65,4 @@ try {
   }
 }
 
-// Copy the vercel package.json to ensure all dependencies are included
-if (fs.existsSync('package.vercel.json')) {
-  console.log('Copying package.vercel.json to dist/package.json for deployment...');
-  fs.copyFileSync('package.vercel.json', 'dist/package.json');
-}
-
 console.log('Build process completed!'); 
